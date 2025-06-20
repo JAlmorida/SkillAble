@@ -1,44 +1,39 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const COURSE_API = "http://localhost:8080/api/v1/course";
+const COURSE_API = "http://localhost:8080/api/v1/courses";
 
 export const courseApi = createApi({
   reducerPath: "courseApi",
-  tagTypes: ["Refetch_Creator_Course", "Refetch_Lecture"],
+  tagTypes: ["Course"],
   baseQuery: fetchBaseQuery({
     baseUrl: COURSE_API,
     credentials: "include",
   }),
   endpoints: (builder) => ({
+    // Course endpoints
     createCourse: builder.mutation({
       query: ({ courseTitle, category }) => ({
         url: "",
         method: "POST",
         body: { courseTitle, category },
       }),
-      invalidatesTags: ["Refetch_Creator_Course"],
+      invalidatesTags: ["Course"],
     }),
     getSearchCourse: builder.query({
-      query: ({searchQuery, categories, sortByLevel}) => {
-        //build query string
-        let queryString = `/search?query=${encodeURIComponent(searchQuery)}`
-
-        //append category
-        if(categories && categories.length > 0 ){
+      query: ({ searchQuery, categories, sortByLevel }) => {
+        let queryString = `/search?query=${encodeURIComponent(searchQuery)}`;
+        if (categories && categories.length > 0) {
           const categoriesString = categories.map(encodeURIComponent).join(",");
           queryString += `&categories=${categoriesString}`;
         }
-        //append sortByLevel is available
-        if(sortByLevel){
+        if (sortByLevel) {
           queryString += `&sortByLevel=${encodeURIComponent(sortByLevel)}`;
         }
-
         return {
-          url:queryString,
-          method:"GET",
-        }
-
-      }
+          url: queryString,
+          method: "GET",
+        };
+      },
     }),
     getPublishedCourse: builder.query({
       query: () => ({
@@ -51,7 +46,7 @@ export const courseApi = createApi({
         url: "",
         method: "GET",
       }),
-      providesTags: ["Refetch_Creator_Course"],
+      providesTags: ["Course"],
     }),
     editCourse: builder.mutation({
       query: ({ formData, courseId }) => ({
@@ -59,52 +54,11 @@ export const courseApi = createApi({
         method: "PUT",
         body: formData,
       }),
-      invalidatesTags: ["Refetch_Creator_Course"],
+      invalidatesTags: ["Course"],
     }),
     getCourseById: builder.query({
       query: (courseId) => ({
         url: `/${courseId}`,
-        method: "GET",
-      }),
-    }),
-    createLecture: builder.mutation({
-      query: ({ lectureTitle, courseId }) => ({
-        url: `/${courseId}/lecture`,
-        method: "POST",
-        body: { lectureTitle },
-      }),
-    }),
-    getCourseLecture: builder.query({
-      query: (courseId) => ({
-        url: `/${courseId}/lecture`,
-        method: "GET",
-      }),
-      providesTags: ["Refetch_Lecture"],
-    }),
-    editLecture: builder.mutation({
-      query: ({
-        lectureTitle,
-        lectureDescription,
-        videoInfo,
-        isPreviewFree,
-        lectureId,
-        courseId,
-      }) => ({
-        url: `/${courseId}/lecture/${lectureId}`,
-        method: "POST",
-        body: { lectureTitle, lectureDescription, videoInfo, isPreviewFree },
-      }),
-    }),
-    removeLecture: builder.mutation({
-      query: (lectureId) => ({
-        url: `/lecture/${lectureId}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: ["Refetch_Lecture"],
-    }),
-    getLectureById: builder.query({
-      query: (lectureId) => ({
-        url: `/lecture/${lectureId}`,
         method: "GET",
       }),
     }),
@@ -116,6 +70,7 @@ export const courseApi = createApi({
     }),
   }),
 });
+
 export const {
   useGetCourseByIdQuery,
   useGetSearchCourseQuery,
@@ -123,10 +78,5 @@ export const {
   useCreateCourseMutation,
   useGetCreatorCourseQuery,
   useEditCourseMutation,
-  useCreateLectureMutation,
-  useGetCourseLectureQuery,
-  useEditLectureMutation,
-  useRemoveLectureMutation,
-  useGetLectureByIdQuery,
   usePublishCourseMutation,
 } = courseApi;

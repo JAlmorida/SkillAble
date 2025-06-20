@@ -1,13 +1,18 @@
 import { User } from "../models/user.model.js";
-import { FriendRequest } from "../models/friendRequest.model.js";
 import { deleteMediaFromCloudinary, uploadMedia } from "../utils/cloudinary.js";
+import { CourseProgress } from "../models/courseProgress.js";
+import { Course } from "../models/course.model.js";
+import mongoose from "mongoose";
 
 export const getUserProfile = async (req, res) => {
   try {
-    const userId = req.id;
+    const userId = req.user.id;
     const user = await User.findById(userId)
       .select("-password")
-      .populate("enrolledCourses");
+      .populate({
+        path: "enrolledCourses",
+        populate: { path: "creator", select: "name photoUrl" },
+      });
     if (!user) {
       return res.status(404).json({
         message: "Profile not found",
@@ -29,8 +34,8 @@ export const getUserProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const userId = req.id;
-    const { name } = req.body;
+    const userId = req.user.id;
+    const { name, photoUrl: bodyPhotoUrl } = req.body;
     const profilePicture = req.file;
 
     const user = await User.findById(userId);
@@ -43,17 +48,17 @@ export const updateProfile = async (req, res) => {
 
     let photoUrl = user.photoUrl; // Keep existing photo URL by default
 
-    // Only process photo if a new one was uploaded
+    // If a new file is uploaded, upload and set photoUrl
     if (profilePicture) {
-      // Delete old photo if it exists
       if (user.photoUrl) {
         const publicId = user.photoUrl.split("/").pop().split(".")[0];
         deleteMediaFromCloudinary(publicId);
       }
-
-      // Upload new photo
       const cloudResponse = await uploadMedia(profilePicture.path);
       photoUrl = cloudResponse.secure_url;
+    } else if (bodyPhotoUrl) {
+      // If a photoUrl is provided in the body, use it
+      photoUrl = bodyPhotoUrl;
     }
 
     const updatedData = { name, photoUrl };
@@ -75,117 +80,142 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-export const getRecommendedUsers = async (req, res) => {
+// Get all users with their enrolled courses
+export const getAllUsers = async (req, res) => {
   try {
-    const currentUserId = req.user.id;
-    const currentUser = req.user;
-
-    const recommendedUsers = await User.find({
-      $and: [
-        { _id: { $ne: currentUserId } },
-        { _id: { $nin: currentUser.friends } },
-        { isOnboarded: true },
-      ],
-    });
-    res.status(200).json(recommendedUsers);
-  } catch (error) {
-    console.error("Error in getRecommendedUsers controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const getMyFriends = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id)
-      .select("friends")
-      .populate("friends", "name photoUrl");
-
-    res.status(200).json(user.friends);
-  } catch (error) {
-    console.error("Error in getMyFriends controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const sendFriendRequest = async (req, res) => {
-  try {
-    const myId = req.user.id;
-    const { id: recipientId } = req.params;
-
-    //prevent sending req to yourself
-    if (myId === recipientId) {
-      return res
-        .status(400)
-        .json({ message: "you cant send frien request to yourself" });
-    }
-
-    const recipient = await User.findById(recipientId);
-    if (!recipient) {
-      return res.status(404).json({ message: "Recipient not found" });
-    }
-
-    //check if user is already friends
-    if (recipient.friends.includes(myId)) {
-      return res
-        .status(400)
-        .json({ message: "You are already friends with thus user" });
-    }
-
-    //check if a req already exists
-    const existingRequest = await FriendRequest.findOne({
-      $or: [
-        { sender: myId, recipient: recipientId },
-        { sender: recipientId, recipient: myId },
-      ],
-    });
-    if (existingRequest) {
-      return res.status(400).json({
-        message: "A friend request already exists between you and this user",
+    // Get all users with their enrolled courses
+    const users = await User.find()
+      .select("-password")
+      .populate({
+        path: "enrolledCourses",
+        select: "courseTitle category courseLevel lectures"
       });
-    }
 
-    const friendRequest = await FriendRequest.create({
-      sender: myId,
-      recipient: recipientId,
+    // For each user, get their course progress
+    const usersWithProgress = await Promise.all(
+      users.map(async (user) => {
+        if (!user.enrolledCourses || user.enrolledCourses.length === 0) {
+          return {
+            ...user.toObject(),
+            enrolledCourses: []
+          };
+        }
+
+        // Get all progress records for this user
+        const progressRecords = await CourseProgress.find({
+          userId: user._id
+        });
+
+        // Add progress data to each enrolled course
+        const enrolledCoursesWithProgress = user.enrolledCourses.map(course => {
+          const courseProgress = progressRecords.find(
+            record => record.courseId.toString() === course._id.toString()
+          );
+
+          let progress = 0;
+          if (courseProgress) {
+            progress = courseProgress.progress || 0;
+            if (courseProgress.completed) {
+              progress = 100;
+            }
+          }
+
+          return {
+            ...course.toObject(),
+            progress
+          };
+        });
+
+        // Return user with updated courses
+        return {
+          ...user.toObject(),
+          enrolledCourses: enrolledCoursesWithProgress
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      users: usersWithProgress
     });
-    res.status(201).json(friendRequest);
   } catch (error) {
-    console.error("Error in sendFriendRequest controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("getAllUsers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve users"
+    });
+    console.log(error);
+    
   }
 };
-
-export const acceptFriendRequest = async (req, res) => {
+// Get detailed information about a specific user's course enrollments
+export const getUserEnrollmentDetails = async (req, res) => {
   try {
-    const { id: requestId } = req.params;
-
-    const friendRequest = await FriendRequest.findById(requestId);
-
-    if (!friendRequest) {
-      return res.status(404).json({ message: "Friend request not found" });
-    }
-
-    //verify the current user is the recipient
-    if (friendRequest.recipient.toString() !== req.user.id) {
-      return res.status(403).json({
-        message: "You are not authorized to accept this request",
+    const { userId } = req.params;
+    
+    // Get the user's course progress data
+    const courseProgress = await CourseProgress.find({ userId });
+    
+    // Get user with enrolled courses
+    const user = await User.findById(userId)
+      .select("-password")
+      .populate({
+        path: "enrolledCourses",
+        select: "courseTitle category courseLevel lectures"
       });
-    }
-    friendRequest.status = "accepted";
-    await friendRequest.save();
+    
+    // Calculate progress for each course
+    const enrollmentDetails = await Promise.all(
+      user.enrolledCourses.map(async (course) => {
+        const progress = courseProgress.find(p => 
+          p.courseId.toString() === course._id.toString()
+        );
 
-    //add ueach user to the other's friend array
-    //$addToSet: adds elements to an array only if theydo not already exist
-    await User.findByIdAndUpdate(friendRequest.recipient, {
-      $addToSet: { friends: friendRequest.sender },
-    });
+        let completionPercentage = 0;
+        let lastActivity = null;
+        let completed = false;
+
+        if (progress) {
+          completed = progress.completed;
+          completionPercentage = progress.progress || 0;
+          if (progress.completed) {
+            completionPercentage = 100;
+          }
+        }
+
+        return {
+          course: {
+            _id: course._id,
+            courseTitle: course.courseTitle,
+            category: course.category,
+            courseLevel: course.courseLevel
+          },
+          progress: {
+            completionPercentage,
+            lastActivity,
+            completed
+          },
+          quizzes: [] // or actual quizzes if you have them
+        };
+      })
+    );
 
     return res.status(200).json({
-      message: "Friend request accepted",
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        photoUrl: user.photoUrl,
+      },
+      enrollmentDetails
     });
-    
   } catch (error) {
-    console.log("Error in acceptFriendRequest controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve user enrollment details"
+    });
   }
 };

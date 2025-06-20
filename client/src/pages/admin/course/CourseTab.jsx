@@ -1,5 +1,5 @@
-import PageLoader from "@/components/PageLoader";
-import RichTextEditor from "@/components/RichTextEditor";
+import PageLoader from "@/components/loadingUi/PageLoader";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import Input from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -35,7 +35,6 @@ const CourseTab = () => {
     subTitle: "",
     category: "",
     courseLevel: "",
-    coursePrice: "",
     courseThumbnail: "",
   });
   const params = useParams();
@@ -57,7 +56,6 @@ const CourseTab = () => {
         description: course.description,
         category: course.category,
         courseLevel: course.courseLevel,
-        coursePrice: course.coursePrice,
         courseThumbnail: "",
       });
     }
@@ -100,7 +98,6 @@ const CourseTab = () => {
     formData.append("description", input.description);
     formData.append("category", input.category);
     formData.append("courseLevel", input.courseLevel);
-    formData.append("coursePrice", input.coursePrice);
     formData.append("courseThumbnail", input.courseThumbnail);
 
     await editCourse({ formData, courseId });
@@ -156,7 +153,7 @@ const CourseTab = () => {
       <CardContent>
         <div className="space-y-4 mt-5">
           <div>
-            <Label>Title</Label>
+            <Label className="mb-2">Title</Label>
             <Input
               type="text"
               placeholder="Input title here"
@@ -166,7 +163,7 @@ const CourseTab = () => {
             />
           </div>
           <div>
-            <Label>Subtitle</Label>
+            <Label className="mb-2">Subtitle</Label>
             <Input
               type="text"
               placeholder="Input subtitle here"
@@ -176,12 +173,12 @@ const CourseTab = () => {
             />
           </div>
           <div>
-            <Label>Description</Label>
+            <Label className="mb-2">Description</Label>
             <RichTextEditor input={input} setInput={setInput} />
           </div>
           <div className="flex items-center gap-5">
             <div>
-              <Label>Category</Label>
+              <Label className="mb-2">Category</Label>
               <Select onValueChange={selectCategory}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select a Category" />
@@ -219,7 +216,7 @@ const CourseTab = () => {
               </Select>
             </div>
             <div>
-              <Label>Course Level</Label>
+              <Label className="mb-2">Course Level</Label>
               <Select onValueChange={selectCourseLevel}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select a Category" />
@@ -234,20 +231,10 @@ const CourseTab = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Price in (PHP)</Label>
-              <Input
-                type="number"
-                name="coursePrice"
-                value={input.coursePrice}
-                onChange={changeEventhandler}
-                placeholder="xxx"
-                className="w-fit"
-              />
             </div>
           </div>
-          <div>
-            <Label>Course Thumbnail</Label>
+          <div className="mt-4">
+            <Label className="mb-2">Course Thumbnail</Label>
             <Input
               type="file"
               onChange={selectThumbnail}
@@ -262,7 +249,7 @@ const CourseTab = () => {
               />
             )}
           </div>
-          <div>
+          <div className="flex gap-2 mt-4">
             <Button onClick={() => navigate("/admin/course")} variant="outline">
               Cancel
             </Button>
@@ -277,7 +264,6 @@ const CourseTab = () => {
               )}
             </Button>
           </div>
-        </div>
       </CardContent>
     </Card>
   );

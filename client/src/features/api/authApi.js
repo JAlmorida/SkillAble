@@ -21,20 +21,20 @@ export const authApi = createApi({
     }),
     loginUser: builder.mutation({
       query: (inputData) => ({
-          url:"login",
-          method:"POST",
-          body:inputData
+        url: "login",
+        method: "POST",
+        body: inputData,
       }),
-      async onQueryStarted(_, {queryFulfilled, dispatch}) {
-          try {
-              const result = await queryFulfilled;
-              dispatch(userLoggedIn({user:result.data.user}));
-          } catch (error) {
-              console.log(error);
-          }
-      }
-  }),
-logoutUser: builder.mutation({
+      async onQueryStarted(_, { queryFulfilled, dispatch }) {
+        try {
+          const result = await queryFulfilled;
+          dispatch(userLoggedIn({ user: result.data.user }));
+        } catch (error) {
+          console.log(error);
+        }
+      },
+    }),
+    logoutUser: builder.mutation({
       query: () => ({
         url: "logout",
         method: "POST",
@@ -45,16 +45,30 @@ logoutUser: builder.mutation({
           await queryFulfilled;
           dispatch(userLoggedOut());
         } catch (error) {
-          console.error('Logout error:', error);
+          console.error("Logout error:", error);
         }
       },
+    }),
+    getAuthUser: builder.query({
+      query: () => ({
+        url: "me",
+        method: "GET",
+      }),
+    }),
+    completeOnBoarding: builder.mutation({
+      query: (userData) => ({
+        url: "onboarding",
+        method: "POST",
+        body: userData,
+      }),
     }),
   }),
 });
 
 export const {
-  useGetAuthUserQuery, 
+  useGetAuthUserQuery,
   useRegisterUserMutation,
   useLoginUserMutation,
   useLogoutUserMutation,
+  useCompleteOnBoardingMutation,
 } = authApi;

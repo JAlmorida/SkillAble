@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   useCreateLectureMutation,
   useGetCourseLectureQuery,
-} from "@/features/api/courseApi";
+} from "@/features/api/lectureApi";
 import { Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import Lecture from "./Lecture";
-import PageLoader from "@/components/PageLoader";
+import PageLoader from "@/components/loadingUi/PageLoader";
+import Input from "@/components/ui/input";
 
 const CreateLecture = () => {
   const [lectureTitle, setLectureTitle] = useState("");
@@ -50,7 +50,6 @@ const CreateLecture = () => {
         <h1 className="font-bold text-xl">
           Lets add lecture, add some basic course details for your new lecture
         </h1>
-        <p className="text-sm"></p>
       </div>
       <div className="space-y-4">
         <div>
@@ -85,6 +84,7 @@ const CreateLecture = () => {
             )}
           </Button>
         </div>
+        
         <div className="mt-10">
           {lectureLoading ? (
             <PageLoader/>

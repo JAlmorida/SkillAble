@@ -31,10 +31,26 @@ export const userApi = createApi({
         body: formData,
       }),
     }),
+    getAllUsers: builder.query({
+      query: () => ({
+        url: "admin/users", 
+        method: "GET", 
+      }),
+      providesTags: ["Users"], 
+    }), 
+    getUserEnrollments: builder.query({
+      query: (userId) => ({
+        url: `admin/users/${userId}/enrollments`, 
+        method: "GET"
+      }), 
+      providesTags: (result, error, userId) => [{ type: "UserEnrollments", id: userId }]
+    })
   }),
 });
 
-export const {
+export const { 
   useLoadUserQuery,
-  useUpdateUserMutation,
-} = userApi; 
+  useUpdateUserMutation, 
+  useGetAllUsersQuery, 
+  useGetUserEnrollmentsQuery, 
+} = userApi;

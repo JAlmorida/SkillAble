@@ -5,10 +5,15 @@ const lectureSchema = new mongoose.Schema({
     type:String,
     required:true,
   },
-  lectureDescription:{type:String},
+  lectureSubtitle:{type:String},
   videoUrl:{ type:String },
   publicId:{ type:String },
-  isPreviewFree:{ type: Boolean },
+  lessons:[
+    {
+      type:mongoose.Schema.Types.ObjectId,
+      ref: "Lesson"
+    }
+  ]
 },{timestamps:true});
 
 export const Lecture = mongoose.model("Lecture",lectureSchema);

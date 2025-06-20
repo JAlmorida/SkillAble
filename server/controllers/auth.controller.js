@@ -117,6 +117,7 @@ export const logout = async (_, res) => {
 
 export const onboard = async (req, res) => {
   try {
+    const userId = req.user._id
     const { name, bio } = req.body;
 
     if (!name || !bio) {
@@ -126,7 +127,7 @@ export const onboard = async (req, res) => {
       });
     }
 
-    const updatedUser = await User.finByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         ...req.body,

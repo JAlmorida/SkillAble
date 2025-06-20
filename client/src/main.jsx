@@ -6,8 +6,10 @@ import { Provider } from "react-redux";
 import { appStore } from "./app/store.js";
 import { Toaster } from "./components/ui/sonner.jsx";
 import { useLoadUserQuery } from "./features/api/userApi";
-import LoadingSpinner from "./components/LoadingSpinner";
+import LoadingSpinner from "./components/loadingUi/LoadingSpinner";
 import { QueryClient, QueryClientProvider,} from '@tanstack/react-query'
+import "stream-chat-react/dist/css/v2/index.css";
+
 
 const Custom = ({ children }) => {
   const { isLoading } = useLoadUserQuery();

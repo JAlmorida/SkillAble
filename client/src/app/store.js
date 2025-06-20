@@ -1,3 +1,4 @@
+
 // filepath: c:\Users\user\skillable\client\skillable\src\app\store.js
 import { configureStore } from "@reduxjs/toolkit";
 import { authApi } from "../features/api/authApi";
@@ -7,25 +8,42 @@ import { courseProgressApi } from "@/features/api/courseProgressApi";
 import { adminApi } from "@/features/api/adminApi";
 import { userApi } from "@/features/api/userApi";
 import authReducer from "@/features/authSlice";
+import { chatApi } from "@/features/api/chatApi";
+import { lectureApi } from "@/features/api/lectureApi";
+import { lessonApi } from "@/features/api/lessonApi";
+import { quizApi } from "@/features/api/quizApi";
+import quizReducer from '@/features/quizSlice'
+import { questionApi } from "@/features/api/questionApi";
 
 export const appStore = configureStore({
   reducer: {
     [authApi.reducerPath]: authApi.reducer,
     [courseApi.reducerPath]: courseApi.reducer,
+    [chatApi.reducerPath]: chatApi.reducer,
     [enrollApi.reducerPath]: enrollApi.reducer,
     [courseProgressApi.reducerPath]: courseProgressApi.reducer,
     [adminApi.reducerPath]: adminApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     auth: authReducer,
+    quiz: quizReducer, 
+    [lectureApi.reducerPath]: lectureApi.reducer,
+    [lessonApi.reducerPath]: lessonApi.reducer,
+    [quizApi.reducerPath]: quizApi.reducer,
+    [questionApi.reducerPath]: questionApi.reducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       authApi.middleware,
+      chatApi.middleware,
       courseApi.middleware,
       enrollApi.middleware,
       courseProgressApi.middleware,
       adminApi.middleware,
-      userApi.middleware
+      userApi.middleware,
+      lectureApi.middleware,
+      lessonApi.middleware, 
+      quizApi.middleware,
+      questionApi.middleware
     ),
 });
 

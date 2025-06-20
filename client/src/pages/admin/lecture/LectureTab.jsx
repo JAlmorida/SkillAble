@@ -1,39 +1,27 @@
-import RichTextEditor from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import {
-  useEditLectureMutation,
-  useGetLectureByIdQuery,
-  useRemoveLectureMutation,
-} from "@/features/api/courseApi";
+import { useEditLectureMutation, useGetLectureByIdQuery, useRemoveLectureMutation } from "@/features/api/lectureApi";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
+import CreateLesson from "../lesson/CreateLesson";
+import Input from "@/components/ui/input";
 
 const MEDIA_API = "http://localhost:8080/api/v1/media";
 
 const LectureTab = () => {
   const [input, setInput] = useState({
     title: "",
-    description: "",
+    subtitle: "",
   });
   const [uploadVideoInfo, setUploadVideoInfo] = useState(null);
-  const [isFree, setIsFree] = useState(false);
   const [mediaProgress, setMediaProgress] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [btnDisable, setBtnDisable] = useState(true);
+  const [setBtnDisable] = useState(true);
   const params = useParams();
   const { courseId, lectureId } = params;
 
@@ -44,19 +32,20 @@ const LectureTab = () => {
     if (lecture) {
       setInput({
         title: lecture.lectureTitle,
-        description: lecture.lectureDescription
+        subtitle: lecture.lectureSubtitle
       });
-      // setIsFree(lecture.isPreviewFree);
       setUploadVideoInfo(lecture.videoInfo);
     }
   }, [lecture]);
 
-  const [editLecture, { data, isLoading, error, isSuccess }] =
-    useEditLectureMutation();
+  const [editLecture, { data, isLoading, error, isSuccess }] = useEditLectureMutation();
+
   const [
     removeLecture,
     { data: removeData, isLoading: removeLoading, isSuccess: removeSuccess },
   ] = useRemoveLectureMutation();
+
+  const [showLessonForm, setShowLessonForm] = useState(false);
 
   const fileChangeHandler = async (e) => {
     const file = e.target.files[0];
@@ -92,8 +81,7 @@ const LectureTab = () => {
   const editLectureHandler = async () => {
     await editLecture({
       lectureTitle: input.title,
-      lectureDescription: input.description,
-      isPreviewFree: isFree,
+      lectureSubtitle: input.subtitle,
       videoInfo: uploadVideoInfo,
       courseId,
       lectureId,
@@ -168,13 +156,13 @@ const LectureTab = () => {
             className="w-fit"
           />
           <div className="mt-4">
-            <Label>Description</Label>
-            <RichTextEditor input={input} setInput={setInput} />
+            <Label className="mb-4">Subtitle</Label>
+            <Input
+            value={input.subtitle} 
+            onChange={(e) => setInput({...input, subtitle: e.target.value})}
+            input={input} 
+            setInput={setInput} />
           </div>
-        </div>
-        <div className="items-center space-x-2 my-2">
-          <Switch checked={isFree} onCheckedChange={setIsFree} id="airplane-mode" />
-          <Label htmlFor="airplane-mode">Is this video free?</Label>
         </div>
         {mediaProgress && (
           <div className="my-4">
@@ -182,7 +170,7 @@ const LectureTab = () => {
             <p>{uploadProgress}% uploaded</p>
           </div>
         )}
-        <div className="mt-4">
+        <div className="mt-4 flex gap-2">
           <Button
             disabled={isLoading}
             variant="outline"
@@ -197,9 +185,31 @@ const LectureTab = () => {
               "Update Lecture"
             )}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowLessonForm((prev) => !prev)}
+          >
+            {showLessonForm ? "Hide Lesson Form" : "Add a Lesson"}
+          </Button>
         </div>
+
+        {showLessonForm && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="font-bold text-xl">Add a lesson </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CreateLesson
+                courseId={courseId}
+                lectureId={lectureId}
+                onClose={() => setShowLessonForm(false)}
+              />
+            </CardContent>
+          </Card>
+        )}
       </CardContent>
     </Card>
+
   );
 };
 

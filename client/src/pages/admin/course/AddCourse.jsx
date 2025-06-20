@@ -1,4 +1,3 @@
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,6 +14,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useCreateCourseMutation } from "@/features/api/courseApi";
 import { toast } from "sonner";
+import Input from "@/components/ui/input";
 
 const AddCourse = () => {
   const [courseTitle, setCourseTitle] = useState("");

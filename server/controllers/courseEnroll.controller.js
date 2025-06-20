@@ -97,9 +97,11 @@ export const getCourseDetailWithEnrollmentStatus = async (req, res) => {
 export const getAllEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user?._id || req.id;
-    const enrollments = await CourseEnroll.find({ userId }).populate(
-      "courseId"
-    );
+    const enrollments = await CourseEnroll.find({ userId })
+      .populate({
+        path: "courseId",
+        populate: { path: "creator", select: "name photoUrl" }
+      });
     const enrolledCourses = enrollments.map((e) => e.courseId);
 
     return res.status(200).json({ enrolledCourses });

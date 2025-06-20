@@ -1,5 +1,5 @@
-import { CourseProgress } from "../models/courseProgress.js";
 import { Course } from "../models/course.model.js";
+import { CourseProgress } from "../models/courseProgress.js";
 
 export const getCourseProgress = async (req, res) => {
   try {
@@ -12,7 +12,12 @@ export const getCourseProgress = async (req, res) => {
       userId,
     }).populate("courseId");
 
-    const courseDetails = await Course.findById(courseId).populate("lectures");
+    const courseDetails = await Course.findById(courseId).populate({
+      path: "lectures",
+      populate: {
+        path: "lessons"
+      }
+    });
 
     if (!courseDetails) {
       return res.status(404).json({
@@ -137,3 +142,136 @@ export const markAsInCompleted = async (req, res) => {
       console.log(error);
     }
   };
+export const updateLessonProgress = async (req, res) => {
+  try {
+    const { courseId, lectureId, lessonId } = req.params;
+    const userId = req.id;
+
+    let courseProgress = await CourseProgress.findOne({ courseId, userId });
+
+    if (!courseProgress) {
+      courseProgress = new CourseProgress({
+        userId,
+        courseId,
+        completed: false,
+        lectureProgress: [],
+      });
+    }
+
+    let lectureProgress = courseProgress.lectureProgress.find(
+      (lecture) => lecture.lectureId === lectureId
+    );
+
+    if (!lectureProgress) {
+      lectureProgress = {
+        lectureId,
+        viewed: false,
+        completedLessons: []
+      };
+      courseProgress.lectureProgress.push(lectureProgress);
+    }
+
+    if (!lectureProgress.completedLessons.includes(lessonId)) {
+      lectureProgress.completedLessons.push(lessonId);
+    }
+
+    const lecture = await Course.findById(courseId)
+      .populate({
+        path: 'lectures',
+        match: { _id: lectureId },
+        populate: {
+          path: 'lessons'
+        }
+      });
+
+    if (!lecture) {
+      return res.status(404).json({
+        message: "Lecture not found"
+      });
+    }
+
+    const totalLessons = lecture.lectures[0]?.lessons?.length || 0;
+
+    if (lectureProgress.completedLessons.length === totalLessons) {
+      lectureProgress.viewed = true;
+    }
+
+    const allLecturesCompleted = courseProgress.lectureProgress.every(
+      (lecture) => lecture.viewed
+    );
+
+    if (allLecturesCompleted) {
+      courseProgress.completed = true;
+    }
+
+    await courseProgress.save();
+
+    return res.status(200).json({
+      message: "Lesson progress updated successfully.",
+    });
+
+  } catch (error) {
+    console.error("Lesson progress update error:", error);
+    return res.status(500).json({
+      message: "Failed to update lesson progress",
+      error: error.message
+    });
+  }
+};
+
+export const markLessonIncomplete = async (req, res) => {
+  try {
+    const { courseId, lectureId, lessonId } = req.params;
+    const userId = req.id;
+
+    let courseProgress = await CourseProgress.findOne({ courseId, userId });
+
+    if (!courseProgress) {
+      return res.status(404).json({
+        message: "Course Progress not found"
+      })
+    }
+
+    let lectureProgress = courseProgress.lectureProgress.find(
+      (lecture) => lecture.lectureId === lectureId
+    )
+
+    if (!lectureProgress) {
+      return res.status(404).json({
+        message: "Lecture progress not found"
+      })
+    }
+
+    //remove the lesson from completed lessons
+    lectureProgress.completedLessons = lectureProgress.completedLessons.filter(
+      id => id !== lessonId
+    )
+
+    //if no lessons are completed, mark lecture as not viewed
+    if (lectureProgress.completedLessons.length === 0) {
+      lectureProgress.viewed = false;
+    }
+
+    //check if all lectures are still completed
+    const allLecturesCompleted = courseProgress.lectureProgress.every(
+      (lecture) => lecture.viewed
+    )
+
+    if (!allLecturesCompleted) {
+      courseProgress.completed = false;
+    }
+
+    await courseProgress.save();
+
+    return res.status(200).json({
+      message: "Lesson marked as incomplete successfully"
+    })
+
+  } catch (error) {
+    console.error("lesson incomplete error:", error);
+    return res.status(500).json({
+      message: "Failed to mark lessin as incomplete", 
+      error: error.message
+    })
+  }
+}

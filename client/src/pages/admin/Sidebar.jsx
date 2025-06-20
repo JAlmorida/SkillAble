@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, SquareLibrary } from "lucide-react";
+import { ChartNoAxesColumn, Newspaper, SquareLibrary } from "lucide-react";
 import React from "react";
 import { Link, Outlet } from "react-router-dom";
 
@@ -15,10 +15,15 @@ const Sidebar = () => {
             <SquareLibrary size={22} />
             <h1>Courses</h1>
           </Link>
+          <Link to="/admin/userDetails" className="flex items-center gap-2">
+            <Newspaper size={22} />
+            <h1>Quiz</h1>
+          </Link>
+
         </div>
       </div>
       <div className="flex-1 p-10">
-        <Outlet/>
+        <Outlet />
       </div>
     </div>
   );

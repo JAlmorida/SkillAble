@@ -1,9 +1,9 @@
-import { View } from "lucide-react";
 import mongoose from "mongoose";
 
 const lectureProgressSchema = new mongoose.Schema({
   lectureId: { type: String },
-  Viewed: { type: Boolean },
+  viewed: { type: Boolean },
+  completedLessons: [{ type: String }]
 });
 
 const courseProgressSchema = new mongoose.Schema({

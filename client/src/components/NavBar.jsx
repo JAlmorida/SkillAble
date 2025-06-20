@@ -1,4 +1,4 @@
-import { Menu, MessageCircle, School } from "lucide-react";
+import { BellIcon, Menu, MessageCircle, School } from "lucide-react";
 import React, { useEffect } from "react";
 import {
   DropdownMenu,
@@ -40,7 +40,7 @@ const Navbar = () => {
       localStorage.clear();
       sessionStorage.clear();
       // Force a complete page reload to clear all state
-      window.location.href = '/login';
+      window.location.href = "/login";
     } catch (error) {
       toast.error("Failed to logout. Please try again.");
     }
@@ -59,7 +59,7 @@ const Navbar = () => {
   }
 
   return (
-    <div className="h-16 dark:bg-[#020817] bg-white border-b dark:border-b-gray-800 border-b-gray-200 fixed top-0 left-0 right-0 duration-300 z-10">
+    <div className="h-20 dark:bg-[#020817] bg-white border-b dark:border-b-gray-800 border-b-gray-200 fixed top-0 left-0 right-0 duration-300 z-10">
       {/* Desktop */}
       <div className="max-w-7xl mx-auto hidden md:flex justify-between items-center gap-10 h-full">
         <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Avatar>
                   <AvatarImage
-                    src={user?.photoUrl || "https://github.com/shadcn.png"}
+                    src={user?.photoUrl || user?.photoUrl}
                     alt="@shadcn"
                   />
                   <AvatarFallback>CN</AvatarFallback>
@@ -123,6 +123,15 @@ const Navbar = () => {
           >
             <MessageCircle />
           </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/notification")}
+          >
+            <BellIcon />
+          </Button>
+
           <DarkMode />
         </div>
       </div>
@@ -147,20 +156,18 @@ const MobileNavbar = ({ user }) => {
       localStorage.clear();
       sessionStorage.clear();
       // Force a complete page reload to clear all state
-      window.location.href = '/login';
+      window.location.href = "/login";
     } catch (error) {
       toast.error("Failed to logout. Please try again.");
     }
   };
-  
+
   useEffect(() => {
     if (isSuccess && data) {
       toast.success(data?.message || "User logged out successfully.");
       navigate("/login", { replace: true });
     }
   }, [isSuccess, data, navigate]);
-
-
 
   return (
     <Sheet>

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useGetDashboardStatsQuery } from "@/features/api/adminApi";
-import PageLoader from "@/components/PageLoader";
+import PageLoader from "@/components/loadingUi/PageLoader";
 
 const Dashboard = () => {
   const { data, isLoading } = useGetDashboardStatsQuery();
