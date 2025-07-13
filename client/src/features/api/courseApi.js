@@ -19,6 +19,12 @@ export const courseApi = createApi({
       }),
       invalidatesTags: ["Course"],
     }),
+    deleteCourse: builder.mutation({
+      query: (courseId) => ({
+        url: `/course/${courseId}`, 
+        method: "DELETE"
+      }),
+    }),
     getSearchCourse: builder.query({
       query: ({ searchQuery, categories, sortByLevel }) => {
         let queryString = `/search?query=${encodeURIComponent(searchQuery)}`;
@@ -68,15 +74,20 @@ export const courseApi = createApi({
         method: "PATCH",
       }),
     }),
+    searchCourses: builder.query({
+      query: (query) => `/search?query=${encodeURIComponent(query)}`,
+    }),
   }),
 });
 
 export const {
   useGetCourseByIdQuery,
+  useDeleteCourseMutation,
   useGetSearchCourseQuery,
   useGetPublishedCourseQuery,
   useCreateCourseMutation,
   useGetCreatorCourseQuery,
   useEditCourseMutation,
   usePublishCourseMutation,
+  useSearchCoursesQuery,
 } = courseApi;

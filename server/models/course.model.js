@@ -8,8 +8,9 @@ const courseSchema = new mongoose.Schema({
     subTitle: {type:String}, 
     description:{ type:String},
     category:{
-        type:String,
-        required:true
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "Category", 
+        required: true
     },
     courseLevel:{
         type:String,
@@ -37,8 +38,11 @@ const courseSchema = new mongoose.Schema({
     isPublished:{
         type:Boolean,
         default:false
-    }
-
+    },
+    expiryEnabled: { type: Boolean, default: false },
+    expiryDuration: { type: Number, default: 365 },
+    expiryUnit: { type: String, default: "days" }, // "days", "months", "years"
+    expiryDays: { type: Number, default: 365 }, // always store as days for calculation
 }, {timestamps:true});
 
 export const Course = mongoose.model("Course", courseSchema);

@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllUsers, getUserEnrollmentDetails, getUserProfile, updateProfile  } from "../controllers/user.controller.js";
+import { changeUserRole, getAllUsers, getSettings, getUserEnrollmentDetails, getUserProfile, updateProfile, updateSettings } from "../controllers/user.controller.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import upload from "../utils/multer.js";
 
@@ -13,5 +13,11 @@ router.route("/profile/update").put(isAuthenticated, upload.single("profilePictu
 //Admin routes for user management 
 router.route("/admin/users").get(isAuthenticated, getAllUsers);
 router.route("/admin/users/:userId/enrollments").get(isAuthenticated, getUserEnrollmentDetails)
+router.route("/change-role").patch(isAuthenticated, changeUserRole)
+
+router.route("/settings").get(isAuthenticated, getSettings);
+router.route("/settings").post(isAuthenticated, updateSettings);
+
+
 export default router;
 

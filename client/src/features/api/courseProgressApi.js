@@ -14,6 +14,14 @@ export const courseProgressApi = createApi({
       query: (courseId) => `/${courseId}`,
       providesTags: ["CourseProgress"],
     }),
+    updateCourseProgress: builder.mutation({
+      query: ({ courseId, data }) => ({
+        url: `/${courseId}/status`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["CourseProgress"],
+    }),
     updateLectureProgress: builder.mutation({
       query: ({ courseId, lectureId }) => ({
         url: `/${courseId}/lecture/${lectureId}/view`,
@@ -28,34 +36,48 @@ export const courseProgressApi = createApi({
       }),
       invalidatesTags: ["CourseProgress"],
     }),
-    markLessonIncomplete: builder.mutation({
-      query: ({ courseId, lectureId, lessonId }) => ({
-        url: `/${courseId}/lecture/${lectureId}/lesson/${lessonId}/unview`,
+    getLessonProgress: builder.query({
+      query: ({ courseId, lectureId, lessonId }) =>
+        `/${courseId}/lecture/${lectureId}/lesson/${lessonId}/progress`,
+      providesTags: ["CourseProgress"],
+    }),
+    getLectureProgress: builder.query({
+      query: ({ courseId, lectureId }) =>
+        `/${courseId}/lecture/${lectureId}/progress`,
+      providesTags: ["CourseProgress"],
+    }),
+    getQuizProgress: builder.query({
+      query: ({ courseId, lectureId, quizId }) =>
+        `/${courseId}/lecture/${lectureId}/quiz/${quizId}/progress`,
+      providesTags: ["CourseProgress"],
+    }),
+    updateQuizProgress: builder.mutation({
+      query: ({ courseId, lectureId, quizId, score }) => ({
+        url: `/${courseId}/lecture/${lectureId}/quiz/${quizId}/attempt`,
         method: "POST",
+        body: { score },
       }),
       invalidatesTags: ["CourseProgress"],
     }),
-    completeCourse: builder.mutation({
-      query: (courseId) => ({
-        url: `/${courseId}/complete`,
-        method: "POST",
-      }),
-      invalidatesTags: ["CourseProgress"],
+    getAllUsersCourseProgress: builder.query({
+      query: (courseId) => `/${courseId}/all`,
+      providesTags: ["CourseProgress"],
     }),
-    inCompleteCourse: builder.mutation({
-      query: (courseId) => ({
-        url: `/${courseId}/incomplete`,
-        method: "POST",
-      }),
-      invalidatesTags: ["CourseProgress"],
+    getCourseProgressHistory: builder.query({
+      query: (courseId) => `/${courseId}/progress-history`,
     }),
   }),
 });
+
 export const {
   useGetCourseProgressQuery,
+  useUpdateCourseProgressMutation,
   useUpdateLectureProgressMutation,
-  useCompleteCourseMutation,
-  useInCompleteCourseMutation,
   useUpdateLessonProgressMutation,
-  useMarkLessonIncompleteMutation
+  useGetLessonProgressQuery,
+  useGetLectureProgressQuery,
+  useGetQuizProgressQuery,
+  useUpdateQuizProgressMutation,
+  useGetAllUsersCourseProgressQuery,
+  useGetCourseProgressHistoryQuery,
 } = courseProgressApi;

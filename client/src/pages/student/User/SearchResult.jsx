@@ -17,7 +17,9 @@ const SearchResult = ({ course }) => {
         <div className="flex flex-col gap-2">
           <h1 className="font-bold text-lg md:text-xl">{course.courseTitle}</h1>
           <p className="text-sm text-gray-600">{course.subTitle}</p>
-          <p className="text-sm text-gray-700">creator: <span className="font-bold">{course.creator?.name}</span></p>
+          <p className="text-sm text-gray-700">
+            Category: <span className="font-bold">{course.category?.name || "Uncategorized"}</span>
+          </p>
           <Badge className="w-fit mt-2 md:mt-0">{course.courseLevel}</Badge>
         </div>
       </Link>

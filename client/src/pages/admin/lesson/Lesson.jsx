@@ -2,11 +2,15 @@ import { Edit } from 'lucide-react';
 import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-const Lesson = ({ lesson, lecture, courseId, index }) => {
+const Lesson = ({ lesson, lectureId, courseId, index }) => {
     const navigate = useNavigate();
     
     const goToUpdateLesson = () => {
-        navigate(`/admin/course/${courseId}/lecture/${lecture._id}/lesson/${lesson._id}/edit`);
+        if (!lectureId) {
+            alert("Lecture information is missing!");
+            return;
+        }
+        navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lesson._id}/edit`);
     }
     
     return (

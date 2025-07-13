@@ -15,6 +15,9 @@ import quizRoute from "../server/routes/quiz.route.js"
 import questionRoute from "../server/routes/question.route.js"
 import lectureRoute from "../server/routes/lecture.route.js"
 import lessonRoute from "../server/routes/lesson.route.js"
+import captionRoute from './routes/caption.route.js';
+import categoryRoute from "../server/routes/category.routes.js"
+import path from "path";
 
 dotenv.config({});
 
@@ -44,6 +47,9 @@ app.use("/api/v1/quiz", quizRoute);
 app.use("/api/v1/question", questionRoute)
 app.use("/api/v1/progress", courseProgressRoute);
 app.use("/api/v1/admin", adminRoute);
+app.use("/api/v1/categories", categoryRoute)
+app.use('/api', captionRoute);
+app.use('/uploads', express.static(path.join(process.cwd(), 'server', 'uploads')));
 
 app.listen(PORT, () =>{
   console.log(`server listening at port ${PORT}`);

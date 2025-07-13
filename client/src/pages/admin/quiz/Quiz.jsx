@@ -1,6 +1,6 @@
 import { Edit } from 'lucide-react';
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate  } from 'react-router-dom';
 
 const Quiz = ({ quiz, courseId, lectureId, lessonId }) => {
   const navigate = useNavigate();

@@ -1,14 +1,12 @@
+import React from "react";
 import {
   createBrowserRouter,
-  Navigate,
   RouterProvider,
+  Outlet,
 } from "react-router-dom";
-import NavBar from "./components/NavBar.jsx";
 import MainLayout from "./layout/MainLayout.jsx";
 import Login from "./pages/auth/Login.jsx";
 import HeroSection from "./pages/student/Course/HeroSection.jsx";
-import MyCourses from "./pages/student/Course/MyCourses.jsx";
-import Sidebar from "./pages/admin/Sidebar.jsx";
 import Dashboard from "./pages/admin/Dashboard.jsx";
 import CourseTable from "./pages/admin/course/CourseTable.jsx";
 import AddCourse from "./pages/admin/course/AddCourse.jsx";
@@ -18,14 +16,7 @@ import EditLecture from "./pages/admin/lecture/EditLecture.jsx";
 import CourseDetail from "./pages/student/Course/CourseDetail.jsx";
 import CourseProgress from "./pages/student/Course/CourseProgress.jsx";
 import SearchPage from "./pages/student/User/SearchPage.jsx";
-import {
-  AdminRoute,
-  AuthenticatedUser,
-  OnboardingRoute,
-  ProtectedRoute,
-} from "./components/ProtectedRoutes.jsx";
 import EnrollCourseProtectedRoute from "./components/courseUi/EnrollCourseProtectedRoute.jsx";
-import { ThemeProvider } from "./components/ThemeProvider.jsx";
 import ChatHomePage from "./pages/student/Chat/ChatHomePage.jsx";
 import Register from "./pages/auth/Register.jsx";
 import Onboarding from "./pages/auth/Onboarding.jsx";
@@ -41,6 +32,25 @@ import AttemptQuiz from "./pages/student/quiz/AttemptQuiz.jsx";
 import QuizResults from "./pages/student/quiz/QuizResults.jsx";
 import UserEnrollmentDetails from "./pages/admin/users/UserEnrollmentDetails.jsx";
 import UserManagement from "./pages/admin/users/UserManagement.jsx";
+import ProgressHistory from "./pages/student/Course/ProgressHistory.jsx";
+import { AdminRoute, AuthenticatedUser, OnboardingRoute, ProtectedRoute } from "./components/context/ProtectedRoutes.jsx";
+import { ThemeProvider } from "./components/context/ThemeProvider.jsx";
+import { ColorBlindProvider } from "./components/context/ColorBlindContext.jsx";
+import { ZoomProvider } from "./components/context/ZoomProvider.jsx";
+import { ScreenReaderProvider } from "./components/context/ScreenReaderContext.jsx";
+import { ZoomWrapper } from "./components/wrapper/ZoomWrapper.jsx";
+import { FeedbackProvider } from "./components/context/FeedbackContext.jsx";
+import { CaptionProvider } from "./components/context/CaptionContext.jsx";
+import Settings from "./pages/student/User/Settings.jsx";
+import { useSelector } from "react-redux";
+import LoadingSpinner from "./components/loadingUi/LoadingSpinner.jsx";
+import GroupChatPage from "./pages/student/Chat/GroupChatPage.jsx";
+import GroupVideoCallPage from "./pages/student/Chat/GroupVideoCallPage.jsx";
+import { ResizeProvider } from "./components/context/ResizeContext.jsx";
+import { ChatProvider } from "./components/context/ChatProvider.jsx";
+import { EnrollmentNotificationProvider } from "@/components/context/EnrollmentNotificationProvider";
+import FloatingZoomPanel from "./components/controls/FloatingZoomPanel.jsx";
+import { useZoom } from "./components/context/ZoomProvider";
 
 const appRouter = createBrowserRouter([
   {
@@ -81,14 +91,6 @@ const appRouter = createBrowserRouter([
         ),
       },
       {
-        path: "my-courses",
-        element: (
-          <ProtectedRoute>
-            <MyCourses />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: "profile",
         element: (
           <ProtectedRoute>
@@ -97,10 +99,34 @@ const appRouter = createBrowserRouter([
         ),
       },
       {
+        path: "settings",
+        element: (
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "chat",
         element: (
           <ProtectedRoute>
             <ChatHomePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "groupchat/:channelId",
+        element: (
+          <ProtectedRoute>
+            <GroupChatPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "groupchat/:channelId/videocall",
+        element: (
+          <ProtectedRoute>
+            <GroupVideoCallPage />
           </ProtectedRoute>
         ),
       },
@@ -129,6 +155,12 @@ const appRouter = createBrowserRouter([
         ),
       },
       {
+        path: "groupcall/:id",
+        element: (
+          <GroupVideoCallPage/>
+        )
+      },
+      {
         path: "course/search",
         element: (
           <ProtectedRoute>
@@ -155,17 +187,17 @@ const appRouter = createBrowserRouter([
         ),
       },
       {
-        path: "/student/quiz/:id",
+        path: "course-progress/:courseId/history",
         element: (
           <ProtectedRoute>
             <EnrollCourseProtectedRoute>
-              <AttemptQuiz />
+              <ProgressHistory />
             </EnrollCourseProtectedRoute>
           </ProtectedRoute>
-        ),
+        )
       },
       {
-        path: "course-progress/:courseId/lesson/:lessonId",
+        path: "course-progress/:courseId/lecture/:lectureId/lesson/:lessonId",
         element: (
           <ProtectedRoute>
             <EnrollCourseProtectedRoute>
@@ -175,24 +207,31 @@ const appRouter = createBrowserRouter([
         ),
       },
       {
-        path: "/quiz-results", 
+        path: "/student/quiz/:courseId/:quizId",
         element: (
           <ProtectedRoute>
             <EnrollCourseProtectedRoute>
-              <QuizResults/>
+              <AttemptQuiz />
+            </EnrollCourseProtectedRoute>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "course-progress/:courseId/quiz/:quizId/quiz-results",
+        element: (
+          <ProtectedRoute>
+            <EnrollCourseProtectedRoute>
+              <QuizResults />
             </EnrollCourseProtectedRoute>
           </ProtectedRoute>
         )
       },
-
-
-
       // Admin routes
       {
         path: "admin",
         element: (
           <AdminRoute>
-            <Sidebar />
+            <Outlet />x
           </AdminRoute>
         ),
         children: [
@@ -210,7 +249,7 @@ const appRouter = createBrowserRouter([
           },
           {
             path: "course/:courseId",
-            element: <EditCourse />,
+            element: <EditCourse />
           },
           {
             path: "course/:courseId/lecture",
@@ -229,9 +268,9 @@ const appRouter = createBrowserRouter([
             element: <CreateQuestion />
           },
           {
-            path: "userDetails", 
-            element: <UserManagement/>
-          }, 
+            path: "userDetails",
+            element: <UserManagement />
+          },
           {
             path: "users/:userId/enrollments",
             element: <UserEnrollmentDetails />
@@ -242,13 +281,47 @@ const appRouter = createBrowserRouter([
   },
 ]);
 
+function ZoomPanelWithContext() {
+  const { isZoomEnabled, zoomLevel, updateZoomLevel } = useZoom();
+  return isZoomEnabled ? (
+    <FloatingZoomPanel
+      zoomLevel={zoomLevel}
+      updateZoomLevel={updateZoomLevel}
+      // onClose logic if needed
+    />
+  ) : null;
+}
+
 function App() {
+  const user = useSelector(state => state.auth.user);
+
+  if (user === undefined) {
+    return <LoadingSpinner />;
+  }
+
   return (
-    <main>
-      <ThemeProvider>
-        <RouterProvider router={appRouter} />
-      </ThemeProvider>
-    </main>
+    <EnrollmentNotificationProvider>
+      <ChatProvider user={user}>
+        <ResizeProvider user={user}>
+          <FeedbackProvider user={user}>
+            <ColorBlindProvider user={user}>
+              <ScreenReaderProvider user={user}>
+                <ZoomProvider user={user}>
+                  <ThemeProvider user={user}>
+                    <CaptionProvider>
+                      <ZoomWrapper>
+                        <ZoomPanelWithContext />
+                        <RouterProvider router={appRouter} />
+                      </ZoomWrapper>
+                    </CaptionProvider>
+                  </ThemeProvider>
+                </ZoomProvider>
+              </ScreenReaderProvider>
+            </ColorBlindProvider>
+          </FeedbackProvider>
+        </ResizeProvider>
+      </ChatProvider>
+    </EnrollmentNotificationProvider>
   );
 }
 

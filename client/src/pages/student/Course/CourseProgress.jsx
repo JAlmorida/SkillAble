@@ -2,72 +2,123 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import {
-  useCompleteCourseMutation,
+  useUpdateCourseProgressMutation,
   useGetCourseProgressQuery,
-  useInCompleteCourseMutation,
   useUpdateLectureProgressMutation,
   useUpdateLessonProgressMutation,
-  useMarkLessonIncompleteMutation,
+  useUpdateQuizProgressMutation
 } from "@/features/api/courseProgressApi";
-import { CheckCircle, CheckCircle2, CirclePlay, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, CheckCircle2, CirclePlay, ChevronDown, ChevronUp, History, ArrowLeft } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import ReactPlayer from "react-player";
 import PageLoader from "@/components/loadingUi/PageLoader";
 import { Progress } from "@/components/ui/progress";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import ProgressHistory from "./ProgressHistory";
 
 const CourseProgress = () => {
+  // All hooks here!
   const params = useParams();
   const navigate = useNavigate();
   const courseId = params.courseId;
-  const { data, isLoading, isError, refetch } =
-    useGetCourseProgressQuery(courseId);
+  const { data, isLoading, error, isError, refetch } = useGetCourseProgressQuery(courseId);
 
   const [updateLectureProgress] = useUpdateLectureProgressMutation();
-
-  const [completeCourse,
-    { data: markCompleteData, isSuccess: completedSuccess },
-  ] = useCompleteCourseMutation();
-  
-  const [
-    inCompleteCourse,
-    { data: markInCompleteData, isSuccess: inCompletedSuccess },
-  ] = useInCompleteCourseMutation();
+  const [{ isSuccess: courseUpdateSuccess }] = useUpdateCourseProgressMutation();
+  const [updateLessonProgress] = useUpdateLessonProgressMutation();
+  const [updateQuizProgress] = useUpdateQuizProgressMutation();
 
   const [expandedLecture, setExpandedLecture] = useState(null);
-
-  useEffect(() => {
-    if (completedSuccess) {
-      refetch();
-      toast.success(markCompleteData.message);
-    }
-    if (inCompletedSuccess) {
-      refetch();
-      toast.success(markInCompleteData.message);
-    }
-  }, [completedSuccess, inCompletedSuccess]);
-
   const [currentLecture, setCurrentLecture] = useState(null);
-
-  const [updateLessonProgress, { isLoading: isUpdatingLesson }] = useUpdateLessonProgressMutation();
-  const [markLessonIncomplete] = useMarkLessonIncompleteMutation();
-
+  const [currentLesson, setCurrentLesson] = useState(null);
   const [completedLessons, setCompletedLessons] = useState({});
 
+  useEffect(() => {
+    console.log("API Response:", data);
+    console.log("API Error:", error);
+  }, [data, error]);
+
+  useEffect(() => {
+    if (data?.data?.progress) {
+      const lessons = {};
+      data.data.progress.forEach(lectureProgress => {
+        if (lectureProgress.completedLessons) {
+          lectureProgress.completedLessons.forEach(lessonId => {
+            lessons[lessonId] = true;
+          });
+        }
+      });
+      setCompletedLessons(lessons);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (courseUpdateSuccess) {
+      refetch();
+      toast.success("Course progress updated successfully");
+    }
+  }, [courseUpdateSuccess, refetch]);
+
+  useEffect(() => {
+    if (!currentLesson && data?.data?.courseDetails?.lectures?.length > 0) {
+      const firstLecture = data.data.courseDetails.lectures[0];
+      if (firstLecture.lessons && firstLecture.lessons.length > 0) {
+        setCurrentLesson(firstLecture.lessons[0]);
+      }
+    }
+  }, [data, currentLesson]);
+
+  // Now, after all hooks, do your early returns:
   if (isLoading) return <PageLoader />;
-  if (isError) return <p>Failed to load course details</p>;
+  if (isError) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 mt-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error!</strong>
+          <span className="block sm:inline"> Failed to load course details. </span>
+          <p className="text-sm mt-2">{error?.data?.message || error?.error || "The course progress data could not be loaded."}</p>
+          <Button 
+            onClick={() => refetch()} 
+            className="mt-3"
+            variant="outline"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  if (!data || !data.data || !data.data.courseDetails) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 mt-4">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Warning!</strong>
+          <span className="block sm:inline"> Course data structure is incorrect. </span>
+          <p className="text-sm mt-2">The API response doesn't contain the expected data structure.</p>
+          <pre className="text-xs mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-32">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      </div>
+    );
+  }
 
   const { courseDetails, progress, completed } = data.data;
   const { courseTitle } = courseDetails;
 
-  const isLectureCompleted = (lectureId) => {
-    return progress.some((prog) => prog.lectureId === lectureId && prog.viewed);
-  };
+  // Calculate the progress percentage based on user-specific completion
+  const allLessons = courseDetails?.lectures?.flatMap(lecture => lecture.lessons) || [];
+  const totalLessons = allLessons.length;
+  const completedLessonsCount = allLessons.filter(lesson => lesson.isCompleted).length;
 
-  const handleLectureProgress = async (lectureId) => {
-    await updateLectureProgress({ courseId, lectureId });
-    refetch();
+  const progressPercent = totalLessons > 0 
+    ? Math.round((completedLessonsCount / totalLessons) * 100)
+    : 0;
+
+  const isLectureCompleted = (lectureId) => {
+    const lecture = courseDetails?.lectures?.find(l => l._id === lectureId);
+    return lecture?.lessons?.every(lesson => lesson.isCompleted) || false;
   };
 
 
@@ -75,95 +126,65 @@ const CourseProgress = () => {
     setExpandedLecture(expandedLecture === lectureId ? null : lectureId);
   };
 
-  const handleCompleteCourse = async () => {
-    await completeCourse(courseId);
+  // When a lesson is clicked:
+  const handleLessonClick = (lectureId, lessonId) => {
+    const lecture = courseDetails.lectures.find(l => l._id === lectureId);
+    const lesson = lecture?.lessons.find(l => l._id === lessonId);
+    if (lesson) setCurrentLesson(lesson);
+    navigate(`/course-progress/${courseId}/lecture/${lectureId}/lesson/${lessonId}`);
   };
-
-  const handleInCompleteCourse = async () => {
-    await inCompleteCourse(courseId);
-  };
-
-  const handleLessonClick = ( lessonId ) => {
-    navigate(`lesson/${lessonId}`)
-  }
-
-  const handleLessonComplete = async (lectureId, lessonId) => {
-    try {
-      const result = await updateLessonProgress({ 
-        courseId, 
-        lectureId, 
-        lessonId 
-      }).unwrap();
-      
-      if (result) {
-        setCompletedLessons(prev => ({
-          ...prev,
-          [lessonId]: true
-        }));
-        refetch();
-        toast.success("Lesson marked as completed");
-      }
-    } catch (error) {
-      console.error("Lesson completion error:", error);
-      toast.error(error?.data?.message || "Failed to update lesson progress");
-    }
-  };
-
-  const handleLessonIncomplete = async (lectureId, lessonId) => {
-    try {
-      const result = await markLessonIncomplete({ 
-        courseId, 
-        lectureId, 
-        lessonId 
-      }).unwrap();
-      
-      if (result) {
-        setCompletedLessons(prev => ({
-          ...prev,
-          [lessonId]: false
-        }));
-        refetch();
-        toast.success("Lesson marked as incomplete");
-      }
-    } catch (error) {
-      console.error("Lesson incompletion error:", error);
-      toast.error(error?.data?.message || "Failed to mark lesson as incomplete");
-    }
-  };
-
-  const lectureIds = courseDetails.lectures.map(l => l._id.toString());
-  const viewedLectures = progress.filter(
-    p => p.viewed && lectureIds.includes(p.lectureId.toString())
-  ).length;
-  const totalLectures = courseDetails.lectures.length;
-  const progressPercent = totalLectures > 0 ? Math.round((viewedLectures / totalLectures) * 100) : 0;
 
   return (
+    <>
+      {/* Progress History Sheet Trigger */}
+      <Sheet>
+      <SheetTrigger asChild>
+  <button
+    className=" fixed top-1/3 left-0 z-50 bg-blue-600 text-white h-12 w-12 flex items-center p-0 rounded-r-lg shadow-lg focus:outline-none"
+  >
+    <History size={24} />
+  </button>
+</SheetTrigger>
+        <SheetContent side="left" className="max-w-lg w-full">
+          <ProgressHistory courseTitle={courseDetails.courseTitle} />
+        </SheetContent>
+      </Sheet>
 
-    //course-progress header
-    <div className="max-w-7xl mx-auto p-4 mt-4">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">{courseTitle}</h1>
-        <Button
-          onClick={completed ? handleInCompleteCourse : handleCompleteCourse}
-          variant={completed ? "outline" : "default"}
-        >
-          {completed ? (
-            <div className="flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2" /> <span>Completed</span>
+      {/* Main Course Progress Content */}
+      <div className="max-w-7xl mx-auto p-4 mt-4">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate(`/course-detail/${courseId}`)}
+            className="flex items-center justify-center rounded-lg border border-[#23232a] bg-transparent text-white hover:bg-[#23232a]/80 transition h-10 "
+            type="button"
+            title="Back to Course Details"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-white">
+              {courseTitle}
+            </h1>
+            {/* Subtitle row for current lesson */}
+            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <rect x="3" y="7" width="18" height="13" rx="2" />
+                <path d="M16 3v4M8 3v4" />
+              </svg>
+              Course: {courseTitle}
             </div>
-          ) : (
-            "Mark as complete"
+          </div>
+          {completed && (
+            <Badge className="bg-green-500 text-white">Course Completed</Badge>
           )}
-        </Button>
-      </div>
-
-      <div className="flex flex-col">
+        </div>
         <h2 className="font-semibold text-xl mb-4">Course Lectures</h2>
         
         {/* Progress Bar Section */}
         <div className="mb-6 flex items-center gap-4">
-          <span className="font-medium text-gray-700 dark:text-gray-300">Progress:</span>
+          <span className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            Progress:
+          </span>
           <div className="flex-1">
             <Progress value={progressPercent} className="h-3" />
           </div>
@@ -172,57 +193,53 @@ const CourseProgress = () => {
         {/* End Progress Bar Section */}
 
         <div className="flex-1 overflow-y-auto">
-          {courseDetails?.lectures.map((lecture) => (
-            <Card
+          {courseDetails?.lectures?.map((lecture) => (
+            <div
               key={lecture._id}
-              className={`mb-3 ${lecture._id === currentLecture?._id
-                ? "bg-gray-200 dark:bg-gray-800"
-                : ""
+              className={`mb-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition
+                ${lecture._id === currentLecture?._id
+                  ? "bg-gray-100 dark:bg-gray-800"
+                  : "bg-white dark:bg-[#23232a]"
                 }`}
             >
-              <CardContent className="p-4">
-                <div>
-                  <div
-                    className="flex items-center justify-between cursor-pointer"
-                    onClick={() => toggleLecture(lecture._id)}
-                  >
-                    <div>
-                      <CardTitle className="text-lg font-medium">
-                        <div className="flex items-center">
-                          {isLectureCompleted(lecture._id) ? (
-                            <CheckCircle2 size={24} className="text-green-500 mr-2" />
-                          ) : (
-                            <CirclePlay size={24} className="text-gray-500 mr-2" />
-                          )}
-                          {lecture.lectureTitle}
-                        </div>
-                      </CardTitle>
-                      <div className="text-sm font-bold mt-2 text-gray-500">
-                        {lecture.lectureSubtitle}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isLectureCompleted(lecture._id) && (
-                        <Badge
-                          variant={"outline"}
-                          className="bg-green-200 text-green-600"
-                        >
-                          Completed
-                        </Badge>
-
-                      )}
-                      {expandedLecture === lecture._id ? (
-                        <ChevronUp size={20} />
+              <div className="p-5">
+                <div
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleLecture(lecture._id)}
+                >
+                  <div>
+                    <div className="text-lg font-medium flex items-center">
+                      {isLectureCompleted(lecture._id) ? (
+                        <CheckCircle2 size={24} className="text-green-500 mr-2" />
                       ) : (
-                        <ChevronDown size={20} />
+                        <CirclePlay size={24} className="text-gray-500 mr-2" />
                       )}
+                      {lecture.lectureTitle}
                     </div>
+                    <div className="text-sm font-bold mt-2 text-gray-500 dark:text-gray-400">
+                      {lecture.lectureSubtitle}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isLectureCompleted(lecture._id) && (
+                      <Badge
+                        variant={"outline"}
+                        className="bg-green-200 text-green-600"
+                      >
+                        Completed
+                      </Badge>
+                    )}
+                    {expandedLecture === lecture._id ? (
+                      <ChevronUp size={20} />
+                    ) : (
+                      <ChevronDown size={20} />
+                    )}
                   </div>
                 </div>
 
                 {expandedLecture === lecture._id && (
                   <div className="mt-4 space-y-4">
-                    <Card className="p-4">
+                    <div className="rounded-xl bg-gray-50 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 p-4">
                       <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-lg font-semibold">Lessons</h3>
@@ -231,56 +248,45 @@ const CourseProgress = () => {
                           {lecture.lessons?.map((lesson, index) => (
                             <div
                               key={lesson._id}
-                              className="flex items-center justify-between bg-[#F7F9FA] dark:bg-[#1F1F1F] px-4 p-2 rounded-md"
+                              className="flex items-center justify-between bg-[#F7F9FA] dark:bg-[#23232a] px-4 p-2 rounded-md"
                             >
                               <div 
                                 className="flex items-center gap-2 cursor-pointer"
                                 onClick={() => handleLessonClick(lecture._id, lesson._id)}
                               >
-                                {completedLessons[lesson._id] ? (
+                                {lesson.isCompleted ? (
                                   <CheckCircle2 size={20} className="text-green-500" />
                                 ) : (
                                   <CirclePlay size={20} className="text-gray-500" />
                                 )}
                                 <h1 className="font-bold text-gray-800 dark:text-gray-100">
-                                  Lesson - {index + 1}: {lesson.lessonTitle}
+                                  Lesson - {index + 1}: {lesson.lessonTitle || "Untitled Lesson"}
                                 </h1>
                               </div>
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (completedLessons[lesson._id]) {
-                                    handleLessonIncomplete(lecture._id, lesson._id);
-                                  } else {
-                                    handleLessonComplete(lecture._id, lesson._id);
-                                  }
-                                }}
-                                variant="outline"
-                                size="sm"
-                                className={completedLessons[lesson._id] ? "text-green-500" : ""}
-                              >
-                                {completedLessons[lesson._id] ? (
-                                  <div className="flex items-center gap-2">
-                                    <CheckCircle2 size={16} />
-                                    <span>Marked as Completed</span>
-                                  </div>
+                              <div className="flex items-center gap-2">
+                                {lesson.isCompleted ? (
+                                  <Badge className="bg-green-500 text-white text-xs">
+                                    Completed
+                                  </Badge>
                                 ) : (
-                                  "Mark as Complete"
+                                  <Badge className="bg-gray-300 text-gray-600 text-xs">
+                                    In Progress
+                                  </Badge>
                                 )}
-                              </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

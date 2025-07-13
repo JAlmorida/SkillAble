@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import React from 'react'
 
-const AttemptQuizQuestionCard = React.memo(({ question, onAnswerChange }) => {
+const AttemptQuizQuestionCard = React.memo(({ question, onAnswerChange, selectedOption }) => {
     const handleOptionChange = (value) => {
         onAnswerChange(question._id, value)
     }
@@ -15,10 +15,11 @@ const AttemptQuizQuestionCard = React.memo(({ question, onAnswerChange }) => {
             </CardHeader>
             <CardContent className="pt-4">
                 <RadioGroup
-                onValueChange={handleOptionChange}
-                className="flex flex-col md:flex-row justify-evenly gap-5"
+                  value={selectedOption || ''} // <-- controlled!
+                  onValueChange={handleOptionChange}
+                  className="flex flex-col md:flex-row justify-evenly gap-5"
                 >
-                {question.options.map((option) => (
+                  {question.options.map((option) => (
                     <div key={option._id} className=" flex items-center space-x-2">
                         <RadioGroupItem value={option._id} id={option._id}/>
                         <Label
@@ -28,14 +29,12 @@ const AttemptQuizQuestionCard = React.memo(({ question, onAnswerChange }) => {
                             {option.text}
                         </Label>
                     </div>
-                ))}
-
+                  ))}
                 </RadioGroup>
             </CardContent>
         </Card>
     )
-
-})
+});
 
 
 export default AttemptQuizQuestionCard

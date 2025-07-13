@@ -4,7 +4,7 @@ const QUIZ_API = "http://localhost:8080/api/v1/quiz";
 
 export const quizApi = createApi({
     reducerPath: 'quizApi',
-    tagTypes: ["Quiz"],
+    tagTypes: ["Quiz", "Attempt", "Lessons", "CourseProgress"],
     baseQuery: fetchBaseQuery({
         baseUrl: QUIZ_API,
         credentials: "include",
@@ -53,7 +53,7 @@ export const quizApi = createApi({
                 method: "POST", 
                 body: { quizId, answers}
             }),
-            invalidatesTags: ["Attempt"]
+            invalidatesTags: ["Attempt", "CourseProgress", "Lessons", "Quiz"]
         }),
         getUserAttempts: builder.query({
             query: () => ({
@@ -76,6 +76,40 @@ export const quizApi = createApi({
             }),
             providesTags: ["Attempt"]
         }),
+        getUserAttemptsForQuiz: builder.query({
+            query: (quizId) => ({
+                url:`/attempts/user/${quizId}`
+            })
+        }),
+        getInProgressAttempt: builder.query({
+            query: (quizId) => ({
+                url: `/attempt/inprogress/${quizId}`,
+                method: "GET"
+            }),
+            providesTags: ["Attempt"]
+        }),
+        startQuizAttempt: builder.mutation({
+            query: (quizId) => ({
+                url: `/attempt/start/${quizId}`,
+                method: "POST"
+            }),
+            invalidatesTags: ["Attempt"]
+        }),
+        updateQuizAttempt: builder.mutation({
+            query: ({ attemptId, answers, remainingTime }) => ({
+                url: `/attempt/update/${attemptId}`,
+                method: "PATCH",
+                body: { answers, remainingTime }
+            }),
+            invalidatesTags: ["Attempt"]
+        }),
+        submitQuizAttempt: builder.mutation({
+            query: (attemptId) => ({
+                url: `/attempt/submit/${attemptId}`,
+                method: "POST"
+            }),
+            invalidatesTags: ["Attempt"]
+        })
     }),
 });
 
@@ -89,4 +123,9 @@ export const {
     useGetUserAttemptsQuery, 
     useGetAdminQuizzesQuery, 
     useGetQuizAttemptsQuery,  
+    useGetUserAttemptsForQuizQuery,
+    useGetInProgressAttemptQuery,
+    useStartQuizAttemptMutation,
+    useUpdateQuizAttemptMutation,
+    useSubmitQuizAttemptMutation
 } = quizApi;

@@ -11,6 +11,8 @@ const courseEnrollSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    enrolledAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date },
     // Optionally, add a status or timestamp
   },
   { timestamps: true }

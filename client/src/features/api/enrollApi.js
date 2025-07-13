@@ -8,25 +8,33 @@ export const enrollApi = createApi({
     baseUrl: ENROLL_API,
     credentials: "include",
   }),
+  tagTypes: ["EnrolledCourses", "CourseDetail"],
   endpoints: (builder) => ({
     enrollCourse: builder.mutation({
       query: (courseId) => ({
         url: "/enroll",
         method: "POST",
-        body: {courseId},
+        body: { courseId },
       }),
+      invalidatesTags: (result, error, courseId) => [
+        { type: "CourseDetail", id: courseId }
+      ],
     }),
     getCourseDetailWithStatus: builder.query({
       query: (courseId) => ({
         url: `/course/${courseId}/detail-with-status`,
         method: "GET",
       }),
+      providesTags: (result, error, courseId) => [
+        { type: "CourseDetail", id: courseId }
+      ],
     }),
     getAllEnrolledCourses: builder.query({
       query: () => ({
         url: `/`,
         method: "GET",
       }),
+      providesTags: ["EnrolledCourses"],
     }),
   }),
 });

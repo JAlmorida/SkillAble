@@ -8,6 +8,7 @@ export const chatApi = createApi({
     baseUrl: CHAT_API,
     credentials: "include",
   }),
+  tagTypes: ["UserCourseGroupChats"],
   endpoints: (builder) => ({
     StreamToken: builder.query({
       query: () => ({
@@ -51,6 +52,27 @@ export const chatApi = createApi({
         method: "PUT",
       }),
     }),
+    createCourseGroupChat: builder.mutation({
+      query: ({ courseId, name }) => ({
+        url: `course-group/${courseId}/create`, 
+        method: "POST", 
+        body: { name }, 
+      })
+    }),
+    joinCourseGroupChat: builder.mutation({
+      query: (courseId) => ({
+        url: `course-group/${courseId}/join`,
+        method: "POST",
+      }),
+      invalidatesTags: ["UserCourseGroupChats"],
+    }),
+    getUserCourseGroupChats: builder.query({
+      query: () => ({
+        url: "course-group/my",
+        method: "GET",
+      }),
+      providesTags: ["UserCourseGroupChats"],
+    }),
   }),
 });
 export const {
@@ -61,4 +83,7 @@ export const {
   useSendFriendRequestMutation,
   useFriendRequestsQuery,
   useAcceptFriendRequestMutation,
+  useCreateCourseGroupChatMutation,
+  useJoinCourseGroupChatMutation,
+  useGetUserCourseGroupChatsQuery,
 } = chatApi;

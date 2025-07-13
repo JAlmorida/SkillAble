@@ -14,6 +14,6 @@ router.route ("/enroll").post(isAuthenticated, courseEnroll);
 router.route("/course/:courseId/detail-with-status").get(isAuthenticated,getCourseDetailWithEnrollmentStatus);
 // Get all enrolled courses for the user
 router.route("/").get(isAuthenticated, getAllEnrolledCourses);
-
+// Get user course enrollment
 
 export default router;

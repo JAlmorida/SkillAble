@@ -1,7 +1,6 @@
 import express from "express";
 import isAuthenticated from "../middleware/isAuthenticated.js";
-import { getStreamToken } from "../controllers/chat.controller.js";
-import { acceptFriendRequest, getFriendRequests, getMyFriends, getOutgoingFriendReqs, getRecommendedUsers, sendFriendRequest } from "../controllers/chat.controller.js";
+import { acceptFriendRequest, createCourseGroupchat, getFriendRequests, getMyFriends, getOutgoingFriendReqs, getRecommendedUsers, getStreamToken, getUserCourseGroupChats, joinCourseGroupChat, sendFriendRequest } from "../controllers/chat.controller.js";
 
 const router = express.Router();
 
@@ -17,5 +16,9 @@ router.route("/outgoing-friend-requests").get(isAuthenticated, getOutgoingFriend
 router.route("/friends").get(isAuthenticated, getMyFriends);
 router.route("/recommend").get(isAuthenticated, getRecommendedUsers);
 
+router.route("/course-group/:courseId/create").post(isAuthenticated, createCourseGroupchat);
+router.route("/course-group/:courseId/join").post(isAuthenticated, joinCourseGroupChat);
+
+router.route("/course-group/my").get(isAuthenticated, getUserCourseGroupChats);
 
 export default router;

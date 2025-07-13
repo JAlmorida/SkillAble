@@ -7,16 +7,16 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 const QuestionCard = ({ question, deleteQuestionHandler }) => {
     return (
-        <Card className="mb-4 bg-slate-900 border-slate-600">
+        <Card className="bg-[#18181b] border border-border rounded-xl shadow transition-shadow hover:shadow-lg w-full">
             <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="question" className="border-none">
                     <AccordionTrigger className="px-6 py-4 hover:no-underline">
                         <div className="flex items-center justify-between w-full">
-                            <span className="text-lg font-medium line-clamp-1">{question.questionText}</span>
+                            <span className="text-lg font-semibold text-white line-clamp-1">{question.questionText}</span>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -25,11 +25,11 @@ const QuestionCard = ({ question, deleteQuestionHandler }) => {
                                 {question.options.map((option, index) => (
                                     <div 
                                         key={option._id || index}
-                                        className={`rounded-lg py-2 px-3 text-sm md:text-base border ${
-                                            option.isCorrect
-                                            ? "border-green-600 bg-green-950/30"
-                                            : "border-red-600 bg-red-950/30"
-                                        }`}
+                                        className={`rounded-lg py-2 px-3 text-base border transition-colors
+                                            ${option.isCorrect
+                                                ? "border-green-500 bg-green-900/30 text-green-200"
+                                                : "border-slate-700 bg-slate-800 text-slate-200"
+                                            }`}
                                     >
                                         {option.text}
                                     </div>
@@ -39,7 +39,7 @@ const QuestionCard = ({ question, deleteQuestionHandler }) => {
                                 <Button
                                     variant="destructive"
                                     onClick={() => deleteQuestionHandler(question)}
-                                    className="w-max h-max flex items-center gap-2"
+                                    className="flex items-center gap-2"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                     Delete

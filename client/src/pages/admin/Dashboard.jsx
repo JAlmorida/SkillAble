@@ -12,34 +12,22 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader>
-          <CardTitle>Total Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold text-blue-600">{data?.data.totalUsers || 0}</p>
-        </CardContent>
-      </Card>
-      
-      <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader>
-          <CardTitle>Total Courses Published</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold text-blue-600">{data?.data.totalCourses || 0}</p>
-        </CardContent>
-      </Card>
-
-      {/* Growth Chart Card */}
-      <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-700">
-            Growth Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white dark:bg-[#18181b] rounded-lg shadow p-6 flex flex-col items-center">
+          <span className="text-gray-700 dark:text-gray-400 text-lg font-semibold">Total Users</span>
+          <span className="text-4xl font-bold text-blue-600 dark:text-blue-400 mt-2">{data?.data.totalUsers || 0}</span>
+        </div>
+        <div className="bg-white dark:bg-[#18181b] rounded-lg shadow p-6 flex flex-col items-center">
+          <span className="text-gray-700 dark:text-gray-400 text-lg font-semibold">Courses Published</span>
+          <span className="text-4xl font-bold text-blue-600 dark:text-blue-400 mt-2">{data?.data.totalCourses || 0}</span>
+        </div>
+      </div>
+      {/* Chart */}
+      <div className="bg-white dark:bg-[#18181b] rounded-lg shadow p-6 w-full min-h-[350px]">
+        <h2 className="text-gray-800 dark:text-gray-300 text-lg font-semibold mb-4">Growth Overview</h2>
+        <ResponsiveContainer width="100%" height={250}>
             <LineChart data={data?.data.monthlyStats || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
@@ -69,8 +57,7 @@ const Dashboard = () => {
               />
             </LineChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };

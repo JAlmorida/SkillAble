@@ -4,12 +4,17 @@ import {
     attemptQuiz, 
     createQuiz, 
     getAdminQuizzes, 
+    getInProgressAttempt, 
     getLessonQuizzes, 
     getQuizAttempts, 
     getQuizById, 
     getuserAttempts, 
+    getUserAttemptsForQuiz, 
     removeQuiz, 
-    updateQuiz 
+    startQuizAttempt, 
+    submitQuizAttempt, 
+    updateQuiz, 
+    updateQuizAttempt
 } from '../controllers/quiz.controller.js';
 
 const router = express.Router();
@@ -26,5 +31,10 @@ router.route("/attempt/:quizId").post(isAuthenticated, attemptQuiz);
 router.route("/attempts/user").get(isAuthenticated, getuserAttempts);
 router.route("/attempts/admin").get(isAuthenticated, getAdminQuizzes)
 router.route("/attempts/:quizId").get(isAuthenticated, getQuizAttempts)
+router.route("/attempts/user/:quizId").get(isAuthenticated, getUserAttemptsForQuiz);
+router.route("/attempt/start/:quizId").post(isAuthenticated, startQuizAttempt);
+router.route("/attempt/update/:attemptId").patch(isAuthenticated, updateQuizAttempt);
+router.route("/attempt/inprogress/:quizId").get(isAuthenticated, getInProgressAttempt);
+router.route("/attempt/submit/:attemptId").post(isAuthenticated, submitQuizAttempt);
 
 export default router;

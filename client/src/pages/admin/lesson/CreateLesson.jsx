@@ -80,7 +80,7 @@ const CreateLesson = () => {
               key={lesson._id}
               lesson={lesson}
               courseId={courseId}
-              lecture={lectureId}
+              lectureId={lectureId}
               index={index}
             />
             )

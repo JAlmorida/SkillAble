@@ -121,7 +121,9 @@ export const createLecture = async (req, res) => {
   export const getLectureById = async (req, res) => {
     try {
       const { lectureId } = req.params;
-      const lecture = await Lecture.findById(lectureId);
+      const lecture = await Lecture.findById(lectureId)
+        .populate('lessons')
+        .populate('quizzes');
       if (!lecture) {
         return res.status(404).json({
           message: "Lecture not found",

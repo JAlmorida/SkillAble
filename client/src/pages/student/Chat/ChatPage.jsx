@@ -15,10 +15,14 @@ import {
 import { StreamChat } from "stream-chat";
 import { toast } from "sonner";
 import CallButton from "@/components/chatUi/CallButton";
+import { Button } from "@/components/ui/button";
+import { useChatClient } from "@/components/context/ChatProvider";
+import ChatLoader from "@/components/chatUi/ChatLoader";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 const ChatPage = () => {
+  const { chatClient, currentUser } = useChatClient();
   const { userId: targetUserId } = useParams();
 
   // Use RTK Query hooks directly
@@ -29,51 +33,31 @@ const ChatPage = () => {
     skip: !authUser,
   });
 
-  const [chatClient, setChatClient] = useState(null);
   const [channel, setChannel] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initChat = async () => {
-      if (!tokenData?.token || !authUser || !targetUserId) return;
+    // Only proceed if chatClient is connected and user is set
+    if (!chatClient || !chatClient.user || !currentUser || !targetUserId) return;
 
-      try {
-        const client = StreamChat.getInstance(STREAM_API_KEY);
+    const channelId = [currentUser._id, targetUserId].sort().join("-");
+    const currChannel = chatClient.channel("messaging", channelId, {
+      members: [currentUser._id, targetUserId],
+    });
 
-        await client.connectUser(
-          {
-            id: authUser._id,
-            name: authUser.name,
-            image: authUser.photoUrl,
-          },
-          tokenData.token
-        );
+    console.time("channelWatch");
+    currChannel.watch().then(() => {
+      console.timeEnd("channelWatch");
+      setChannel(currChannel);
+    }).catch((error) => {
+      console.error("Error initializing chat:", error);
+    });
 
-        const channelId = [authUser._id, targetUserId].sort().join("-");
-        const currChannel = client.channel("messaging", channelId, {
-          members: [authUser._id, targetUserId],
-        });
-
-        await currChannel.watch();
-
-        setChatClient(client);
-        setChannel(currChannel);
-      } catch (error) {
-        console.error("Error initializing chat:", error);
-        toast.error("Could not connect to chat. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initChat();
-
-    // Cleanup on unmount
+    // Cleanup if needed
     return () => {
-      if (chatClient) chatClient.disconnectUser();
+      setChannel(null);
     };
-    // eslint-disable-next-line
-  }, [tokenData, authUser, targetUserId]);
+  }, [chatClient, chatClient?.user, currentUser, targetUserId]);
 
   const handleVideoCall = () => {
     if (channel) {
@@ -85,32 +69,22 @@ const ChatPage = () => {
     }
   };
 
-  if (
-    loading ||
-    tokenLoading ||
-    authUserLoading ||
-    !chatClient ||
-    !channel
-  ) {
-    return (
-      <div className="flex flex-col items-center justify-center overflow-hdden">
-        <Skeleton className="w-16 h-16 rounded-full mb-4" />
-        <div className="text-lg font-semibold mb-2">Loading chat...</div>
-        <Skeleton className="w-1/2 h-8 mb-2" />
-        <Skeleton className="w-1/3 h-8" />
-      </div>
-    );
+  if (!chatClient || !chatClient.user || !channel) {
+    return <div><ChatLoader/></div>;
   }
 
   return (
-    <div className="overflow-auto">
+    <div className="h-[93vh]">
       <Chat client={chatClient}>
         <Channel channel={channel}>
-          <div className="w-full relative h-full">
+          <div className="w-full relative">
             <CallButton handleVideoCall={handleVideoCall} />
-            <ChannelHeader />
-            <MessageList />
-            <MessageInput focus />
+            <Window>
+              <ChannelHeader />
+              <MessageList />
+              <MessageInput focus />
+            </Window>
+            <Thread />
           </div>
         </Channel>
       </Chat>

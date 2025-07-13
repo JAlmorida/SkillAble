@@ -1,26 +1,66 @@
+import React from "react";
+import { useLocation } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
-import React from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 const QuizResults = () => {
     const location = useLocation();
-    const { score, total } = location.state || { score: 0, total: 0 };
+    const { score, total, questions, userAnswers } = location.state || {};
     const navigate = useNavigate();
 
+    // Helper to get user's selected option for a question
+    const getUserAnswer = (questionId) =>
+        userAnswers?.find(ans => ans.questionId === questionId)?.selectedOption;
+
     return (
-        <div className='min-h-[80vh] flex flex-col gap-5 justify-center items-center'>
-            <div className='text-center'>
-                <h1 className='text-3xl border-b border-slate-600 pb-5 '>Quiz Results</h1>
-                <p className='text-2xl mt-4 flex items-center gap-3 font-thin'>Your Score:
-                    <span className='font-semibold'>
-                        <span className={`${score / total >= 0.4 ? "text-green-500" : "text-red-700"}`}>{score}
-                        </span>
-                        {total}
-                    </span></p>
-            </div>
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Quiz Results</h1>
+            <p className="mb-6">Score: {score} / {total}</p>
+            {questions?.map((q, idx) => {
+                const userAnswer = getUserAnswer(q._id);
+                const correctOption = q.options.find(opt => opt.isCorrect);
+                const userOption = q.options.find(opt => opt._id === userAnswer);
+                const isCorrect = userOption && userOption.isCorrect;
+                return (
+                    <Card key={q._id} className="mb-4">
+                        <CardContent className="p-4">
+                            <div className="font-semibold mb-2">{q.questionText}</div>
+                            <div>
+                                {q.options.map(opt => (
+                                    <div key={opt._id} className="flex items-center gap-2">
+                                        <span
+                                            className={
+                                                opt._id === userAnswer
+                                                    ? isCorrect
+                                                        ? "text-green-600 font-bold"
+                                                        : "text-red-600 font-bold"
+                                                    : opt.isCorrect
+                                                        ? "text-green-600"
+                                                        : ""
+                                            }
+                                        >
+                                            {opt.text}
+                                        </span>
+                                        {opt._id === userAnswer && (
+                                            <Badge variant={isCorrect ? "success" : "destructive"}>
+                                                Your Answer
+                                            </Badge>
+                                        )}
+                                        {opt.isCorrect && (
+                                            <Badge variant="success">Correct</Badge>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })}
             <Button className="w-max" onClick={() => navigate("/")}>Back to Home</Button>
         </div>
-    )
-}
+    );
+};
 
-export default QuizResults
+export default QuizResults;

@@ -15,12 +15,15 @@ const SearchPage = () => {
   const [sortByLevel, setSortByLevel] = useState("");
 
   const { data, isLoading } = useGetSearchCourseQuery({
-    searchQuery:query,
-    categories:selectedCategories,
+    searchQuery: query,
+    categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     sortByLevel
   });
+  console.log("Search API data:", data);
 
-  const isEmpty = !isLoading && data?.courses.length === 0;
+  // FIX: Support both array and object API responses
+  const courses = Array.isArray(data) ? data : (data?.courses || []);
+  const isEmpty = !isLoading && courses.length === 0;
 
   const handleFilterChange = (categories, level) => {
     setSelectedCategories(categories);
@@ -45,7 +48,7 @@ const SearchPage = () => {
           ) : isEmpty ? (
             <CourseNotFound />
           ) : (
-            data?.courses.map((course) => <SearchResult key={course._id} course={course}/>)
+            courses.map((course) => <SearchResult key={course._id} course={course}/>)
           )}
         </div>
       </div>

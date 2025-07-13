@@ -14,6 +14,7 @@ const CreateQuiz = () => {
 
   const [quizTitle, setQuizTitle] = useState('');
   const [quizTimer, setQuizTimer] = useState(5);
+  const [maxAttempts, setMaxAttempts] = useState(5);
 
   const [createQuiz, { isLoading, isSuccess, error, data }] = useCreateQuizMutation();
   const { data: quizData, isLoading: quizLoading, refetch } = useGetLessonQuizzesQuery(lessonId);
@@ -24,6 +25,7 @@ const CreateQuiz = () => {
       toast.success(data?.message || "Quiz created successfully");
       setQuizTitle('');
       setQuizTimer(5);
+      setMaxAttempts(5);
     }
     if (error) {
       toast.error(error.data?.message || "Failed to create quiz")
@@ -31,21 +33,27 @@ const CreateQuiz = () => {
   }, [isSuccess, error, data, refetch]);
 
   const createQuizHandler = async () => {
-    await createQuiz({ lessonId, data: { quizTitle, quizTimer}});
+    await createQuiz({ lessonId, data: { quizTitle, quizTimer, maxAttempts } });
   };
 
-  // Example for { data: [ ... ] }
-  const existingQuiz = quizData && quizData.data && quizData.data.length > 0 ? quizData.data[0] : null;
+  const existingQuiz = quizData?.data?.[0] || null;
 
   return (
-    <div>
+    <div className="w-full mx-auto bg-[#18181b] border border-border rounded-xl shadow p-5">
       <div className="mb-4">
-      <h1 className="font-bold text-xl mt-5">
-        {existingQuiz ? "Quiz for this lesson" : "Create a quiz for this lesson"}
-      </h1>
+        <h2 className="font-bold text-2xl text-white">
+          {existingQuiz ? "Quiz for this Lesson" : "Create a Quiz"}
+        </h2>
+        <p className="text-gray-400 text-sm mt-1">
+          {existingQuiz
+            ? "You can view or edit the quiz for this lesson below."
+            : "Set up a quiz for this lesson. All fields are required."}
+        </p>
       </div>
       {quizLoading ? (
-        <Loader2 className="animate-spin"/>
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
+        </div>
       ) : existingQuiz ? (
         <Quiz 
           quiz={existingQuiz}
@@ -54,35 +62,73 @@ const CreateQuiz = () => {
           lessonId={lessonId}
         />
       ) : (
-        <div className="space-y-4">
-          <Label>Quiz Title</Label>
-          <Input
-            value={quizTitle}
-            onChange={e => setQuizTitle(e.target.value)}
-            placeholder="Enter title here"
-          />
-          <Label>Timer (minutes)</Label>
-          <Input
-            type="number"
-            min={5}
-            max={60}
-            value={quizTimer}
-            onChange={e => setQuizTimer(Number(e.target.value))}
-            placeholder="Set Timer"
-          />
-          <div className="flex gap-2">
+        <form
+          className="space-y-5"
+          onSubmit={e => {
+            e.preventDefault();
+            createQuizHandler();
+          }}
+        >
+          <div>
+            <Label className="text-gray-200">Quiz Title</Label>
+            <Input
+              value={quizTitle}
+              onChange={e => setQuizTitle(e.target.value)}
+              placeholder="Enter quiz title"
+              className="mt-1"
+              required
+            />
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Label className="text-gray-200">Timer (minutes)</Label>
+              <Input
+                type="number"
+                min={5}
+                max={60}
+                value={quizTimer}
+                onChange={e => setQuizTimer(Number(e.target.value))}
+                placeholder="Set timer"
+                className="mt-1"
+                required
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-gray-200">Max Attempts</Label>
+              <Input
+                type="number"
+                min={1}
+                value={maxAttempts}
+                onChange={e => setMaxAttempts(Math.max(1, Number(e.target.value)))}
+                className="mt-1"
+                required
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
             <Button
-            variant="outline"
-            onClick={() => navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}`)}>
+              type="button"
+              variant="outline"
+              onClick={() => navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}`)}
+            >
               Back to lesson
             </Button>
             <Button
-            onClick={createQuizHandler}
-            disabled={isLoading || !quizTitle}>
-              {isLoading ? "Creating Quiz..." : "Create Quiz"}
+              type="submit"
+              disabled={isLoading || !quizTitle}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Quiz"
+              )}
             </Button>
           </div>
-        </div>
+        </form>
       )}
     </div>
   )

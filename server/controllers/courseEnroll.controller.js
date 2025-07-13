@@ -2,11 +2,13 @@ import { User } from "../models/user.model.js";
 import { Course } from "../models/course.model.js";
 import { CourseEnroll } from "../models/courseEnroll.model.js";
 import { Lecture } from "../models/lecture.model.js";
+import { CourseProgress } from "../models/courseProgress.js";
 
 // Enroll user in a course (no payment)
 export const courseEnroll = async (req, res) => {
   try {
-    const { courseId } = req.body;
+    // Accept courseId from either body (POST) or params (GET)
+    const courseId = req.body.courseId || req.params.courseId;
     const userId = req.user?._id || req.id;
 
     if (!userId) {
@@ -25,13 +27,44 @@ export const courseEnroll = async (req, res) => {
     if (!course) return res.status(404).json({ message: "Course not found" });
 
     // Check if already enrolled
-    const alreadyEnrolled = await CourseEnroll.findOne({ userId, courseId });
-    if (alreadyEnrolled) {
-      return res.status(400).json({ message: "Already enrolled" });
+    let enrollment = await CourseEnroll.findOne({ userId, courseId });
+    if (enrollment) {
+      // If already enrolled, just return the enrollment info
+      const isExpired = course.expiryEnabled && enrollment?.expiresAt && new Date() > enrollment.expiresAt;
+      return res.status(200).json({
+        ...enrollment.toObject(),
+        isExpired
+      });
+    }
+
+    // --- ENFORCE MAX ACTIVE ENROLLMENTS ---
+    const allEnrollments = await CourseEnroll.find({ userId });
+    const activeEnrollments = [];
+    for (const enrollment of allEnrollments) {
+      if (await isEnrollmentActive(enrollment)) {
+        activeEnrollments.push(enrollment);
+      }
+    }
+    if (activeEnrollments.length >= 10) {
+      return res.status(400).json({
+        message: "Course enrollment reached the maximum limit. Finish a course first."
+      });
+    }
+    // --- END ENFORCE ---
+
+    let expiresAt = null;
+    if (course.expiryEnabled) {
+      const enrolledAt = new Date();
+      expiresAt = new Date(enrolledAt.getTime() + (course.expiryDays || 365) * 24 * 60 * 60 * 1000);
     }
 
     // Create enrollment record
-    await CourseEnroll.create({ userId, courseId });
+    enrollment = new CourseEnroll({
+      userId,
+      courseId,
+      expiresAt
+    });
+    await enrollment.save();
 
     // Add course to user's enrolledCourses
     if (!user.enrolledCourses.includes(courseId)) {
@@ -53,7 +86,11 @@ export const courseEnroll = async (req, res) => {
       );
     }
 
-    res.status(200).json({ message: "Enrolled successfully" });
+    const isExpired = course.expiryEnabled && enrollment?.expiresAt && new Date() > enrollment.expiresAt;
+    res.status(200).json({
+      ...enrollment.toObject(),
+      isExpired
+    });
   } catch (error) {
     console.error("Enrollment error:", error);
     res
@@ -76,11 +113,19 @@ export const getCourseDetailWithEnrollmentStatus = async (req, res) => {
       return res.status(404).json({ message: "Course not found!" });
     }
 
-    const enrolled = await CourseEnroll.findOne({ userId, courseId });
+    const enrollment = await CourseEnroll.findOne({ courseId, userId: userId });
+    const isExpired = course.expiryEnabled && enrollment?.expiresAt && new Date() > enrollment.expiresAt;
+
+    // Fetch course progress for this user and course
+    const courseProgress = await CourseProgress.findOne({ courseId, userId });
+    const completed = courseProgress?.completed || false;
 
     return res.status(200).json({
       course,
-      enrolled: !!enrolled, // true if enrolled, false otherwise
+      enrolled: !!enrollment,
+      expiresAt: enrollment?.expiresAt,
+      isExpired,
+      completed
     });
   } catch (error) {
     console.error("Course detail error:", error);
@@ -93,7 +138,17 @@ export const getCourseDetailWithEnrollmentStatus = async (req, res) => {
   }
 };
 
-// Get all courses the user is enrolled in
+// Add this utility function
+async function isEnrollmentActive(enrollment) {
+  const now = new Date();
+  const notExpired = !enrollment.expiresAt || now <= enrollment.expiresAt;
+  // Check course progress for completion
+  const courseProgress = await CourseProgress.findOne({ courseId: enrollment.courseId, userId: enrollment.userId });
+  const notFinished = !courseProgress || !courseProgress.completed;
+  return notExpired && notFinished;
+}
+
+// Update the controller to return active count
 export const getAllEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user?._id || req.id;
@@ -102,16 +157,25 @@ export const getAllEnrolledCourses = async (req, res) => {
         path: "courseId",
         populate: { path: "creator", select: "name photoUrl" }
       });
-    const enrolledCourses = enrollments.map((e) => e.courseId);
 
-    return res.status(200).json({ enrolledCourses });
+    // Filter active enrollments
+    const activeEnrollments = [];
+    for (const enrollment of enrollments) {
+      if (await isEnrollmentActive(enrollment)) {
+        activeEnrollments.push(enrollment);
+      }
+    }
+
+    return res.status(200).json({ 
+      enrolledCourses: enrollments.map((e) => e.courseId),
+      activeEnrollmentCount: activeEnrollments.length
+    });
   } catch (error) {
     console.error("Get all enrolled courses error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to fetch enrolled courses",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to fetch enrolled courses",
+      error: error.message,
+    });
   }
 };
+

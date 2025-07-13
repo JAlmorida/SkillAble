@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGetUserEnrollmentsQuery } from '@/features/api/userApi';
+import { useGetUserEnrollmentDetailsQuery } from '@/features/api/userApi';
 import PageLoader from '@/components/loadingUi/PageLoader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,9 +26,26 @@ const UserEnrollmentDetails = () => {
   }
   
   // Only fetch if userId exists
-  const { data, isLoading, error } = useGetUserEnrollmentsQuery(userId, {
-    skip: !userId // Skip query if userId doesn't exist
+  const { data, isLoading, error } = useGetUserEnrollmentDetailsQuery(userId, { skip: !userId });
+
+  const attempts = data?.attempts || [];
+
+  // Group attempts by course and lecture
+  const groupedAttempts = {};
+  (attempts || []).forEach(attempt => {
+    const courseTitle = attempt.quizId?.courseId?.courseTitle || "Unknown Course";
+    const lectureTitle =
+      attempt.quizId?.lesson?.lecture?.lectureTitle ||
+      attempt.quizId?.lesson?.lessonTitle ||
+      "No lecture assigned";
+    if (!groupedAttempts[courseTitle]) groupedAttempts[courseTitle] = {};
+    if (!groupedAttempts[courseTitle][lectureTitle]) groupedAttempts[courseTitle][lectureTitle] = [];
+    groupedAttempts[courseTitle][lectureTitle].push(attempt);
   });
+
+  // State for open/close dropdowns
+  const [openCourse, setOpenCourse] = useState({});
+  const [openLecture, setOpenLecture] = useState({});
 
   if (isLoading) return <PageLoader />;
 
@@ -37,7 +54,7 @@ const UserEnrollmentDetails = () => {
       <div className="container mx-auto p-6 flex flex-col items-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading User Data</h1>
         <p className="text-gray-600 mb-6">{error.message || "There was an error loading the user's enrollment details."}</p>
-        <Button onClick={() => navigate('/admin/users')}>
+        <Button onClick={() => navigate('/admin/userDetails')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to User Management
         </Button>
       </div>
@@ -49,7 +66,7 @@ const UserEnrollmentDetails = () => {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <Button variant="outline" onClick={() => navigate('/admin/users')}>
+        <Button variant="outline" onClick={() => navigate('/admin/userDetails')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
       </div>
@@ -131,40 +148,50 @@ const UserEnrollmentDetails = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-6">
-                  {enrollmentDetails.map((enrollment) => (
-                    Array.isArray(enrollment.quizzes) && enrollment.quizzes.length > 0 ? (
-                      <div key={enrollment.course._id} className="space-y-2">
-                        <h3 className="font-medium border-b pb-2">{enrollment.course.title}</h3>
-                        <div className="grid gap-2">
-                          {enrollment.quizzes.map((quiz, index) => (
-                            <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <p className="font-medium">{quiz.quizTitle}</p>
-                                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Clock className="h-3 w-3" />
-                                    <span>
-                                      {new Date(quiz.completedAt).toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div>
-                                  <Badge className={
-                                    quiz.score / quiz.total >= 0.7 ? 'bg-green-500' :
-                                    quiz.score / quiz.total >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
-                                  }>
-                                    {quiz.score}/{quiz.total} ({Math.round(quiz.score / quiz.total * 100)}%)
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                  {Object.keys(groupedAttempts).length > 0 ? (
+                    Object.entries(groupedAttempts).map(([courseTitle, lectures]) => (
+                      <div key={courseTitle} className="mb-4">
+                        {/* Course Dropdown Trigger */}
+                        <div
+                          className="cursor-pointer font-bold text-lg mb-2"
+                          onClick={() => setOpenCourse(prev => ({ ...prev, [courseTitle]: !prev[courseTitle] }))}
+                        >
+                          {courseTitle} {openCourse[courseTitle] ? "▲" : "▼"}
                         </div>
+                        {openCourse[courseTitle] && (
+                          <div className="ml-4">
+                            {Object.entries(lectures).map(([lectureTitle, attempts]) => (
+                              <div key={lectureTitle} className="mb-2">
+                                {/* Lecture Dropdown Trigger */}
+                                <div
+                                  className="cursor-pointer font-semibold text-base mb-1"
+                                  onClick={() => setOpenLecture(prev => ({ ...prev, [lectureTitle]: !prev[lectureTitle] }))}
+                                >
+                                  {lectureTitle !== "Unknown Lecture" ? lectureTitle : "No lecture assigned"} ({attempts.length}) {openLecture[lectureTitle] ? "▲" : "▼"}
+                                </div>
+                                {openLecture[lectureTitle] && (
+                                  <div className="ml-4">
+                                    {attempts.map((attempt, idx) => (
+                                      <div key={idx} className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg mb-2">
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <Badge className="bg-blue-600 text-white">
+                                            Score: {attempt.score} / {attempt.total ?? "?"}
+                                          </Badge>
+                                          <Badge className="bg-blue-600 text-white">
+                                            Attempted: {attempt.createdAt ? new Date(attempt.createdAt).toLocaleString() : "N/A"}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ) : null
-                  ))}
-
-                  {enrollmentDetails.every(enrollment => (enrollment.quizzes?.length ?? 0) === 0) && (
+                    ))
+                  ) : (
                     <div className="text-center py-10">
                       <p className="text-gray-500">No quiz attempts found for this user.</p>
                     </div>

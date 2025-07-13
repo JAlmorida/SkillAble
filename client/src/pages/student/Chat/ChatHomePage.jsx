@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import FriendCard from "@/components/chatUi/FriendCard";
 import NoFriendsFound from "@/components/chatUi/NoFriendsFound";
-import { useOutGoingFriendReqsQuery, useRecommendedUsersQuery, useUserFriendsQuery, useSendFriendRequestMutation, useFriendRequestsQuery } from "@/features/api/chatApi";
+import { useOutGoingFriendReqsQuery, useRecommendedUsersQuery, useUserFriendsQuery, useSendFriendRequestMutation, useFriendRequestsQuery, useGetUserCourseGroupChatsQuery } from "@/features/api/chatApi";
+import NoGroupChatAvailable from "@/components/chatUi/NoGroupChatAvailable";
+import GroupChatCard from "@/components/chatUi/GroupChatCard";
 
 
 const ChatHomePage = () => {
@@ -17,6 +19,19 @@ const ChatHomePage = () => {
   const [sendFriendRequest, { isLoading: isPending }] = useSendFriendRequestMutation();
   const { data: friendRequests } = useFriendRequestsQuery();
   const incomingRequests = friendRequests?.incomingReqs || [];
+
+  const { data: groupChatsData, isLoading: loadingGroupChats, refetch } = useGetUserCourseGroupChatsQuery();
+  const allChannels = groupChatsData?.groupChats || [];
+
+  // Defensive filter for group chats
+  const groupChats = allChannels.filter(channel =>
+    typeof channel.channelId === "string" &&
+    channel.channelId.startsWith("course-") &&
+    typeof channel.name === "string" &&
+    channel.name.trim() !== ""
+  );
+
+  console.log("All channels:", allChannels);
 
   useEffect(() => {
     const outgoingIds = new Set();
@@ -68,6 +83,29 @@ const ChatHomePage = () => {
               ))}
             </div>
           )}
+
+          {/* Group Chats Section - directly under Your Friends */}
+          <section className="mb-10 mt-8">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">Your Group Chats</h2>
+            {loadingGroupChats ? (
+              <div>Loading...</div>
+            ) : groupChats.length === 0 ? (
+              <NoGroupChatAvailable />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {groupChats.map(channel => (
+                  <GroupChatCard
+                    key={channel.channelId}
+                    group={{
+                      channelId: channel.channelId,
+                      name: channel.name,
+                      courseThumbnail: channel.courseThumbnail,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
           <section>
             <div className="mb-6 sm:mb-8">

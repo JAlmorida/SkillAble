@@ -8,10 +8,20 @@ const lectureSchema = new mongoose.Schema({
   lectureSubtitle:{type:String},
   videoUrl:{ type:String },
   publicId:{ type:String },
+  isFinished: {
+    type:Boolean, 
+    default:false, 
+  },
   lessons:[
     {
       type:mongoose.Schema.Types.ObjectId,
       ref: "Lesson"
+    }
+  ],
+  quizzes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Quiz"
     }
   ]
 },{timestamps:true});

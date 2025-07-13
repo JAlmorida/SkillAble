@@ -3,51 +3,64 @@ import React, { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useCreateCourseMutation } from "@/features/api/courseApi";
 import { toast } from "sonner";
 import Input from "@/components/ui/input";
+import {
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useDeleteCategoryMutation,
+} from "@/features/api/categoryApi";
 
 const AddCourse = () => {
   const [courseTitle, setCourseTitle] = useState("");
   const [category, setCategory] = useState("");
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [pendingCategory, setPendingCategory] = useState("");
 
-  const [createCourse, { data, isLoading, error, isSuccess }] =
-    useCreateCourseMutation();
+  const [createCourse, { data, isLoading, error, isSuccess }] = useCreateCourseMutation();
+  const { data: categoryData, isLoading: loadingCategories } = useGetCategoriesQuery();
+  const [createCategory] = useCreateCategoryMutation();
+  const [deleteCategory] = useDeleteCategoryMutation();
+  const categories = categoryData?.categories || [];
 
   const navigate = useNavigate();
 
-  const getSelectedCategory = (value) => {
-    setCategory(value);
-  };
-
-  const createCourseHandler = async () => {
-    await createCourse({ courseTitle, category });
-  };
-
-  //for displaying toast
   useEffect(() => {
     if (isSuccess) {
       toast.success(data?.message || "Course created.");
       navigate("/admin/course");
     }
-  }, [isSuccess, error]);
+  }, [isSuccess, error, data, navigate]);
+
+  const handleCategorySelect = (val) => {
+    if (val === "__custom__") {
+      setShowCustomCategoryInput(true);
+      setPendingCategory("");
+    } else {
+      setShowCustomCategoryInput(false);
+      setCategory(val);
+    }
+  };
+
+  const handleCreateCourse = async () => {
+    const finalCategory = showCustomCategoryInput ? pendingCategory : category;
+    await createCourse({ courseTitle, category: finalCategory });
+  };
 
   return (
     <div className="flex-1 mx-10">
       <div className="mb-4">
         <h1 className="font-bold text-xl">
-          Lets add course, add some basic course details for your new course
+          Let's add a course. Add some basic course details for your new course.
         </h1>
-        <p className="text-sm"></p>
       </div>
       <div className="space-y-4">
         <div>
@@ -62,41 +75,70 @@ const AddCourse = () => {
         </div>
         <div>
           <Label>Category</Label>
-          <Select onValueChange={getSelectedCategory}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select a Category" />
+          <Select
+            onValueChange={handleCategorySelect}
+            value={showCustomCategoryInput ? "__custom__" : category}
+            disabled={loadingCategories}
+          >
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Select or add category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Category</SelectLabel>
-                <SelectItem value="Business & Entrepreneurship">
-                  Business & Entrepreneurship
+              {categories.map(option => (
+                <SelectItem key={option._id} value={option._id}>
+                  <div className="flex items-center justify-between">
+                    <span>{option.name}</span>
+                    <button
+                      type="button"
+                      className="ml-2 text-xs text-red-500 hover:underline"
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (window.confirm("Delete this category?")) {
+                          deleteCategory(option._id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </SelectItem>
-                <SelectItem value="Agriculture & Farming">
-                  {" "}
-                  Agriculture & Farming
-                </SelectItem>
-                <SelectItem value="Data science & analysis">
-                  Data science & analysis
-                </SelectItem>
-                <SelectItem value="Communication & Media Studies">
-                  Communication & Media Studies
-                </SelectItem>
-                <SelectItem value="Culinary arts & Food Science">
-                  Culinary arts & Food Science
-                </SelectItem>
-                <SelectItem value="Cyber Security & data protection">
-                  Cyber Security & data protection
-                </SelectItem>
-                <SelectItem value="Digital Marketing & social media">
-                  Digital Marketing & social media
-                </SelectItem>
-                <SelectItem value="Electrical & Electronic Engineering">
-                  Electrical & Electronic Engineering
-                </SelectItem>
-              </SelectGroup>
+              ))}
+              <SelectItem value="__custom__">Add new category</SelectItem>
             </SelectContent>
           </Select>
+          {showCustomCategoryInput && (
+            <div className="flex gap-2 mt-2">
+              <Input
+                placeholder="Enter new category"
+                value={pendingCategory}
+                onChange={e => setPendingCategory(e.target.value)}
+                autoFocus
+              />
+              <Button
+                onClick={async () => {
+                  const trimmed = pendingCategory.trim();
+                  if (trimmed && !categories.some(c => c.name === trimmed)) {
+                    const res = await createCategory(trimmed).unwrap();
+                    setCategory(res.category._id);
+                    setShowCustomCategoryInput(false);
+                    setPendingCategory("");
+                  }
+                }}
+                disabled={!pendingCategory.trim()}
+              >
+                Save Category
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCustomCategoryInput(false);
+                  setPendingCategory("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => navigate("/admin/course")}>
@@ -105,7 +147,7 @@ const AddCourse = () => {
           <Button
             variant="outline"
             disabled={isLoading}
-            onClick={createCourseHandler}
+            onClick={handleCreateCourse}
           >
             {isLoading ? (
               <>

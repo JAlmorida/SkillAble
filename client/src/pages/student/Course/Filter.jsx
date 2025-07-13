@@ -1,5 +1,4 @@
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import React, { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -10,49 +9,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import React, { useState } from "react";
-
-const categories = [
-  { id: "business & entrepreneurship", label: "Business & Entrepreneurship" },
-  { id: "agriculture & farming", label: "Agriculture & Farming" },
-  { id: "data science & analysis", label: "Data science & analysis" },
-  {
-    id: "communication & media studies",
-    label: "Communication & Media Studies",
-  },
-  { id: "culinary arts & food science", label: "Culinary arts & Food Science" },
-  {
-    id: "cyber security & data protection",
-    label: "Cyber Security & data protection",
-  },
-  {
-    id: "digital marketing & social media",
-    label: "Digital Marketing & social media",
-  },
-  {
-    id: "electrical & electronic engineering",
-    label: "Electrical & Electronic Engineering",
-  },
-];
+import { Button } from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import { useGetCategoriesQuery } from "@/features/api/categoryApi"; // <-- Use RTK Query
 
 const Filter = ({ handleFilterChange }) => {
+  const { data, isLoading } = useGetCategoriesQuery();
+  const categories = data?.categories || [];
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortByLevel, setSortByLevel] = useState("");
 
   const handleCategoryChange = (categoryId) => {
-    setSelectedCategories((prevCategories) => {
-      const newCategories = prevCategories.includes(categoryId)
-        ? prevCategories.filter((id) => id !== categoryId)
-        : [...prevCategories, categoryId];
-
-        handleFilterChange(newCategories, sortByLevel);
-        return newCategories;
-    });
+    const newCategories = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter((id) => id !== categoryId)
+      : [...selectedCategories, categoryId];
+    setSelectedCategories(newCategories);
+    handleFilterChange(newCategories);
   };
-  const selectByLevelHandler = (selectedValue) =>{
+
+  const selectByLevelHandler = (selectedValue) => {
     setSortByLevel(selectedValue);
     handleFilterChange(selectedCategories, selectedValue);
-  }
+  };
 
   return (
     <div className="w-full md:w-[20%]">
@@ -64,10 +42,10 @@ const Filter = ({ handleFilterChange }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectLabel >Sort by Level</SelectLabel>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
+              <SelectLabel>Sort by Level</SelectLabel>
+              <SelectItem value="Beginner">Beginner</SelectItem>
+              <SelectItem value="Medium">Medium</SelectItem>
+              <SelectItem value="Advanced">Advanced</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -75,17 +53,21 @@ const Filter = ({ handleFilterChange }) => {
       <Separator className="my-4" />
       <div>
         <h1 className="font-semibold">CATEGORIES</h1>
-        {categories.map((category) => (
-          <div className="flex items-center space-x-2 my-2">
-            <Checkbox
-              id={category.id}
-              onCheckedChange={() => handleCategoryChange(category.id)}
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : (
+          categories.map((category) => (
+            <div key={category._id} className="flex items-center space-x-2 my-2">
+            <input
+              type="checkbox"
+                id={category._id}
+                checked={selectedCategories.includes(category._id)}
+                onChange={() => handleCategoryChange(category._id)}
             />
-            <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              {category.label}
-            </Label>
+              <label htmlFor={category._id}>{category.name}</label>
           </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,8 @@ import { lessonApi } from "@/features/api/lessonApi";
 import { quizApi } from "@/features/api/quizApi";
 import quizReducer from '@/features/quizSlice'
 import { questionApi } from "@/features/api/questionApi";
+import { captionApi } from "@/features/api/captionApi";
+import { categoryApi } from "@/features/api/categoryApi";
 
 export const appStore = configureStore({
   reducer: {
@@ -29,7 +31,9 @@ export const appStore = configureStore({
     [lectureApi.reducerPath]: lectureApi.reducer,
     [lessonApi.reducerPath]: lessonApi.reducer,
     [quizApi.reducerPath]: quizApi.reducer,
-    [questionApi.reducerPath]: questionApi.reducer, 
+    [questionApi.reducerPath]: questionApi.reducer,
+    [captionApi.reducerPath]: captionApi.reducer, 
+    [categoryApi.reducerPath]: categoryApi.reducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -43,7 +47,9 @@ export const appStore = configureStore({
       lectureApi.middleware,
       lessonApi.middleware, 
       quizApi.middleware,
-      questionApi.middleware
+      questionApi.middleware, 
+      captionApi.middleware,
+      categoryApi.middleware
     ),
 });
 

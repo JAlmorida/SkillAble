@@ -1,111 +1,122 @@
 import CreateQuestionModal from '@/components/quizUi/createQuiz/CreateQuestionModal';
 import QuestionCard from '@/components/quizUi/createQuiz/QuestionCard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDeleteQuestionMutation, useGetQuizQuestionsQuery } from '@/features/api/questionApi';
 import { setEdit, setQuiz } from '@/features/quizSlice';
-import React, { useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const CreateQuestion = () => {
-    const { quiz } = useSelector(state => state.quiz);
-    const [createQuestionModalData, setCreateQuestionModalData] = useState(null);
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const { courseId, lectureId, lessonId, quizId } = useParams();
+  const { quiz } = useSelector(state => state.quiz);
+  const [createQuestionModalData, setCreateQuestionModalData] = useState(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { courseId, lectureId, lessonId, quizId } = useParams();
 
-    const {
-        data: questionsData,
-        isLoading,
-        refetch,
-    } = useGetQuizQuestionsQuery( quizId,{ skip: !quizId });
+  const {
+    data: questionsData,
+    isLoading,
+    refetch,
+  } = useGetQuizQuestionsQuery(quizId, { skip: !quizId });
 
-    const [deleteQuestion] = useDeleteQuestionMutation();
+  const [deleteQuestion] = useDeleteQuestionMutation();
+  const questions = questionsData?.data || [];
 
-    const questions = questionsData?.data || [];
+  const finishHandler = () => {
+    navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/edit`);
+    dispatch(setQuiz(null));
+    dispatch(setEdit(false));
+  };
 
-    const finishHandler = () => {
-        navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quizId}`);
-        
-        dispatch(setQuiz(null));
-        dispatch(setEdit(false));
-    };
+  const deleteQuestionHandler = async (question) => {
+    try {
+      await deleteQuestion({ questionId: question._id }).unwrap();
+      refetch();
+    } catch {
+      toast.error("Error deleting question");
+    }
+  };
 
-    const deleteQuestionHandler = async (question) => {
-        try {
-            await deleteQuestion({
-                questionId: question._id,
-            }).unwrap();
-            refetch();
-        } catch (error) {
-            toast.error("error deleting question");
-        }
-    };
+  useEffect(() => {
+    if (!quiz) {
+      navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quizId}`);
+    }
+  }, [quiz, navigate, courseId, lectureId, lessonId, quizId]);
 
-    React.useEffect(() => {
-        if (!quiz) {
-            navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quizId}`);
-        }
-    }, [quiz, navigate, courseId, lectureId, lessonId, quizId]);
+  return (
+    <>
+      <div className="relative flex flex-col gap-6 w-full min-h-screen bg-transparent">
+        {/* Header */}
+        <header className="w-full flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-border py-5 px-6 bg-background/80 backdrop-blur sticky top-0 z-10">
+          <h1 className="text-2xl font-bold text-white flex-1">
+            {quiz?.quizTitle || 'Add Questions'}
+          </h1>
+          <div className="flex items-center gap-x-6">
+            <span className="text-sm text-gray-400">
+              {questions.length} Question{questions.length !== 1 ? 's' : ''}
+            </span>
+            <Button
+              onClick={() => setCreateQuestionModalData({ ...quiz })}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              disabled={questions.length >= 50}
+            >
+              + Add Question
+            </Button>
+          </div>
+        </header>
 
-    return (
-        <>
-            <div className="relative flex flex-col items-center gap-5 py-10">
-            <Card className="w-full max-w-3xl">
-                <CardHeader>
-                    <CardTitle className="text-3xl text-center underline">Add Questions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <section className="flex gap-y-3 w-full flex-col md:flex-row justify-between items-center mb-6  ">
-                        <div className="flex flex-col items-center md:items-start">
-                            <span className="flex gap-1 flex-col items-center md:items-start">
-                                <h2 className="text-2xl">{quiz?.quizTitle}</h2>
-                            </span>
-                        </div>
-                        <Button
-                        onClick={() => setCreateQuestionModalData({ ...quiz })}
-                        className="w-max h-max"
-                        >
-                        Create Question
-                        </Button>
-                    </section>
-
-                    <div className="w-full flex flex-col gap-5 rounded-lg min-h-[50vh]">
-                    {!isLoading && questions.length === 0 && (
-                        <div className="w-full flex-col justify-center items-center text-lg gap-5 rounded-lg min-h-[50vh]">
-                            No Questions found
-                        </div>
-                    )}
-                    {!isLoading && 
-                    questions.length > 0 &&
-                    questions.map ((ques) => (
-                        <QuestionCard
-                            deleteQuestionHandler={deleteQuestionHandler}
-                            key={ques?._id}
-                            question={ques}
-                            quiz={quiz}
-                            setCreateQuestionModalData={setCreateQuestionModalData}
-                            setQuestions={() => refetch()}
-                        />
-                    ))}
-                    </div>
-                    <div className="flex justify-end mt-6">
-                        <Button
-                        onClick={finishHandler}>Finish</Button>
-                    </div>
-                </CardContent>
-            </Card>
+        {/* Main Content */}
+        <main className="w-full flex flex-col gap-5">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="w-10 h-10 rounded-full border-4 border-slate-600 border-t-blue-500 animate-spin" />
             </div>
-            {createQuestionModalData && ( 
-                <CreateQuestionModal
+          ) : questions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[40vh] text-lg gap-3">
+              <span className="text-gray-400">No questions found</span>
+              <Button
+                onClick={() => setCreateQuestionModalData({ ...quiz })}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                + Add your first question
+              </Button>
+            </div>
+          ) : (
+            questions.map((ques) => (
+              <div key={ques?._id} className="bg-background  px-3">
+                <QuestionCard
+                  deleteQuestionHandler={deleteQuestionHandler}
+                  question={ques}
+                  quiz={quiz}
                   setCreateQuestionModalData={setCreateQuestionModalData}
                   setQuestions={() => refetch()}
                 />
-                )}
-        </>
-    )
-}
+              </div>
+            ))
+          )}
+        </main>
 
-export default CreateQuestion
+        {/* Finish Button */}
+        <Button
+          onClick={finishHandler}
+          className="fixed bottom-8 right-8 z-50 bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+          disabled={questions.length < 5}
+        >
+          Finish
+        </Button>
+      </div>
+
+      {/* Modal */}
+      {createQuestionModalData && (
+        <CreateQuestionModal
+          setCreateQuestionModalData={setCreateQuestionModalData}
+          setQuestions={() => refetch()}
+        />
+      )}
+    </>
+  );
+};
+
+export default CreateQuestion;

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   useFriendRequestsQuery,
   useAcceptFriendRequestMutation,
@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import NoNotificationsFound from '@/components/chatUi/NoNotificationFound';
+import { useChatClient } from "@/components/context/ChatProvider";
+import GCNotificationCard from '@/components/chatUi/chatNotificatio/GCNotification';
+import DMNotificationCard from '@/components/chatUi/chatNotificatio/DMNotificationCard';
+import { useEnrollmentNotifications } from "@/components/context/EnrollmentNotificationProvider";
+import EnrollmentNotificationCard from '@/components/notification/EnrollmentNotificationCard';
 
 const NotificationsPage = () => {
   const { data: friendRequests, isLoading, refetch } = useFriendRequestsQuery();
@@ -15,6 +20,40 @@ const NotificationsPage = () => {
 
   const incomingRequests = friendRequests?.incomingReqs || [];
   const acceptedRequests = friendRequests?.acceptedReqs || [];
+
+  const { chatNotifications, setChatNotifications, uniqueId } = useChatClient();
+  const context = useEnrollmentNotifications();
+  const enrollmentNotifications = context?.enrollmentNotifications || [];
+  console.log("NotificationsPage context instance ID:", uniqueId);
+  console.log("Enrollment notifications:", enrollmentNotifications);
+
+  // Group DMs by userId
+  const dmGroups = chatNotifications
+    .filter(n => n.type !== "group")
+    .reduce((acc, notif) => {
+      acc[notif.sender] = acc[notif.sender] || [];
+      acc[notif.sender].push(notif);
+      return acc;
+    }, {});
+
+  // Group Group Chats by channelId
+  const gcGroups = chatNotifications
+    .filter(n => n.type === "group")
+    .reduce((acc, notif) => {
+      acc[notif.channelId] = acc[notif.channelId] || [];
+      acc[notif.channelId].push(notif);
+      return acc;
+    }, {});
+
+  // State to control open/close for each group
+  const [openDM, setOpenDM] = useState({});
+  const [openGC, setOpenGC] = useState({});
+
+  const handleClearNotification = (id) => {
+    setChatNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  console.log("Rendering chatNotifications:", chatNotifications);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -109,6 +148,109 @@ const NotificationsPage = () => {
             )}
           </>
         )}
+
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Chat Notifications</h1>
+
+        {/* Group Chat Notifications */}
+        {Object.keys(gcGroups).length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Group Chat Notifications
+            </h2>
+            <div className="space-y-3">
+              {Object.entries(gcGroups).map(([channelId, notifs]) => (
+                <div key={channelId} className="border rounded mb-2">
+                  <div
+                    className="cursor-pointer p-2 bg-gray-100 flex justify-between items-center"
+                    onClick={() => setOpenGC(prev => ({ ...prev, [channelId]: !prev[channelId] }))}
+                  >
+                    <span>
+                      {notifs[0].groupName || "Group Chat"} ({notifs.length} message{notifs.length > 1 ? "s" : ""})
+                    </span>
+                    <span>{openGC[channelId] ? "▲" : "▼"}</span>
+                  </div>
+                  {openGC[channelId] && (
+                    <div>
+                      {notifs.map((notif, idx) => (
+                        <GCNotificationCard
+                          key={notif.id}
+                          group={{
+                            channelId: notif.channelId,
+                            name: notif.groupName || "Group Chat",
+                            courseThumbnail: notif.courseThumbnail || "/default-group.png",
+                            unreadCount: 1,
+                            lastMessage: notif.text,
+                            lastSender: notif.sender,
+                            createdAt: notif.createdAt,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* DM Notifications */}
+        {Object.keys(dmGroups).length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Direct Messages
+            </h2>
+            <div className="space-y-3">
+              {Object.entries(dmGroups).map(([userId, notifs]) => (
+                <div key={userId} className="border rounded mb-2">
+                  <div
+                    className="cursor-pointer p-2 bg-gray-100 flex justify-between items-center"
+                    onClick={() => setOpenDM(prev => ({ ...prev, [userId]: !prev[userId] }))}
+                  >
+                    <span>
+                      {notifs[0].sender} ({notifs.length} message{notifs.length > 1 ? "s" : ""})
+                    </span>
+                    <span>{openDM[userId] ? "▲" : "▼"}</span>
+                  </div>
+                  {openDM[userId] && (
+                    <div>
+                      {notifs.map((notif, idx) => (
+                        <DMNotificationCard
+                          key={notif.id}
+                          dm={{
+                            userId: notif.sender,
+                            name: notif.sender,
+                            avatar: notif.senderAvatar || "/default-user.png",
+                            unreadCount: 1,
+                            lastMessage: notif.text,
+                            lastSender: notif.sender,
+                            createdAt: notif.createdAt,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {enrollmentNotifications.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Course Enrollments
+            </h2>
+            <div className="space-y-3">
+              {enrollmentNotifications.map((notification) => (
+                <EnrollmentNotificationCard
+                  key={notification.id}
+                  enrollment={notification}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
       </div>
     </div>
   );

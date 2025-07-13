@@ -23,6 +23,7 @@ export const lessonApi = createApi({
         url: `/${lectureId}/lesson`,
         method: "GET"
       }),
+      providesTags: ["Lessons"]
     }),
     editLesson: builder.mutation({
       query: ({ 
@@ -30,19 +31,21 @@ export const lessonApi = createApi({
         lessonId, 
         lessonTitle, 
         lessonDescription, 
-        videoUrl 
+        videoUrl,
+        resourceFiles
       }) => ({
         url: `/${lectureId}/lesson/${lessonId}`,
         method: "PUT", 
-        body: { lessonTitle, lessonDescription, videoUrl}
+        body: { lessonTitle, lessonDescription, videoUrl, resourceFiles }
       }),
       invalidatesTags: ["Lessons"]
     }),
     getLessonById: builder.query({
       query: (lessonId) => ({
-        url: `/lesson/${lessonId}`, // Add "lesson/" to match your route
+        url: `/lesson/${lessonId}`, 
         method: "GET", 
       }),
+      providesTags: ["Lessons"]
     }),
     removeLesson: builder.mutation({
       query: (lessonId) => ({

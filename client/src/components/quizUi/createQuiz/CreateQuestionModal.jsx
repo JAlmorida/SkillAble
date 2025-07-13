@@ -1,32 +1,85 @@
 import { useCreateQuestionMutation } from '@/features/api/questionApi';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useParams } from "react-router-dom";
 import { Label } from '@/components/ui/label';
 import Input from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+
+const MIN_OPTIONS = 2;
 
 const CreateQuestionModal = ({ setQuestions, setCreateQuestionModalData }) => {
     const [options, setOptions] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [currentOption, setCurrentOption] = useState('');
-    const [isCurrentOptionCorrect, setIsCurrentOptionCorrect] = useState(false);
-    const [optionError, setOptionError] = useState('');
-    const { register, handleSubmit, formState: { errors }, reset } = useForm();
+    const [formError, setFormError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { register, handleSubmit, formState: { errors }, reset, setFocus } = useForm();
     const { token } = useSelector(state => state.auth);
     const { quizId } = useParams();
-
     const [createQuestion] = useCreateQuestionMutation();
+    const inputRef = useRef(null);
+
+    // Focus the question input on open
+    useEffect(() => {
+        setFocus('questionText');
+    }, [setFocus]);
+
+    // Close modal on ESC
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') setCreateQuestionModalData(null);
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [setCreateQuestionModalData]);
+
+    // Add option on Enter
+    const handleOptionKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addOption();
+        }
+    };
+
+    const addOption = () => {
+        const trimmed = currentOption.trim();
+        if (!trimmed) return;
+        setOptions(prev => [...prev, { text: trimmed, isCorrect: false }]);
+        setCurrentOption('');
+        setFormError('');
+        inputRef.current?.focus();
+    };
+
+    const removeOption = (idx) => {
+        setOptions(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const toggleCorrect = (idx) => {
+        setOptions(prev => prev.map((opt, i) => i === idx ? { ...opt, isCorrect: !opt.isCorrect } : opt));
+    };
+
+    const validateForm = (data) => {
+        if (!data.questionText.trim()) {
+            setFormError('Question is required.');
+            return false;
+        }
+        if (options.length < MIN_OPTIONS) {
+            setFormError('At least two options are required.');
+            return false;
+        }
+        if (!options.some(opt => opt.isCorrect)) {
+            setFormError('At least one correct answer is required.');
+            return false;
+        }
+        setFormError('');
+        return true;
+    };
 
     const submitHandler = async (data) => {
-        if (!options.some(option => option.isCorrect)) {
-            setOptionError("There must be at least one correct option.");
-            return;
-        }
+        if (!validateForm(data)) return;
         setLoading(true);
         const payload = {
             ...data,
@@ -34,111 +87,110 @@ const CreateQuestionModal = ({ setQuestions, setCreateQuestionModalData }) => {
             quizId
         };
         try {
-            const response = await createQuestion({
-                data: payload,
-                token
-            }).unwrap();
+            const response = await createQuestion({ data: payload, token }).unwrap();
             if (response) {
                 setQuestions(prevQuestions => [...prevQuestions, response]);
                 setCreateQuestionModalData(null);
                 reset();
+                setOptions([]);
+                toast.success('Question created!');
             }
-        } catch (error) {
-            toast.error("Question cannot be created");
+        } catch {
+            toast.error('Question cannot be created');
         } finally {
             setLoading(false);
         }
     };
 
-    const addOption = () => {
-        if (!currentOption.trim()) return;
-        if (isCurrentOptionCorrect && options.some(option => option.isCorrect)) {
-            setOptionError("There can be only one correct option.");
-            return;
-        }
-        setOptions([...options, { text: currentOption, isCorrect: isCurrentOptionCorrect }]);
-        if (isCurrentOptionCorrect) setOptionError("");
-        setCurrentOption('');
-        setIsCurrentOptionCorrect(false);
-    };
-
-    const removeOption = (index) => {
-        setOptions(options.filter((_, i) => i !== index));
+    // Modal backdrop click closes modal
+    const handleBackdropClick = (e) => {
+        if (e.target === e.currentTarget) setCreateQuestionModalData(null);
     };
 
     return (
-        <>
-            <div 
-                className="fixed inset-0 bg-black/50 z-40"
-                onClick={() => setCreateQuestionModalData(null)}
-            />
-            
-            <div className="fixed top-1/2 left-1/2 max-w-[480px] w-full -translate-x-1/2 -translate-y-1/2 flex flex-col items-center bg-background shadow-lg rounded-lg border p-5 z-50 max-h-[90vh] overflow-y-auto">
-                <h3 className="text-3xl mb-2">Create A Question</h3>
-                <form onSubmit={handleSubmit(submitHandler)} className="w-full">
-                    <div className="flex flex-col gap-3">
-                        <Label htmlFor="questionText">Enter Question</Label>
+        <div 
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" 
+            onClick={handleBackdropClick}
+            tabIndex={-1}
+        >
+            <div
+                className="relative bg-background shadow-lg rounded-lg border p-6 w-full max-w-md mx-auto z-50 max-h-[90vh] overflow-y-auto"
+                role="dialog"
+                aria-modal="true"
+            >
+                <button
+                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                    onClick={() => setCreateQuestionModalData(null)}
+                    aria-label="Close"
+                >
+                    <X size={22} />
+                </button>
+                <h3 className="text-2xl mb-4 font-semibold">Create a Question</h3>
+                <form onSubmit={handleSubmit(submitHandler)} className="space-y-5">
+                    <div>
+                        <Label htmlFor="questionText">Question</Label>
                         <Input
                             id="questionText"
-                            placeholder="Enter Question Here"
-                            {...register("questionText", { required: "Question is required" })}
+                            placeholder="Enter question here"
+                            {...register("questionText", { required: true })}
+                            autoFocus
                         />
-                        {errors.questionText && <p className="text-red-500">{errors.questionText.message}</p>}
+                        {errors.questionText && <p className="text-red-500 text-sm mt-1">Question is required.</p>}
                     </div>
-
-                    <div className="flex flex-col gap-3">
-                        <Label>Add Options</Label>
-                        <div className="flex flex-col gap-2">
-                            <div className="gap-2 flex">
-                                <Input
-                                    placeholder="Create Option"
-                                    value={currentOption}
-                                    onChange={e => setCurrentOption(e.target.value)}
-                                    className="flex-1"
-                                />
-                                <Checkbox
-                                    id="isCorrect"
-                                    checked={isCurrentOptionCorrect}
-                                    onCheckedChange={checked => setIsCurrentOptionCorrect(!!checked)}
-                                />
-                                <Label htmlFor="isCorrect" className="ml-2">Correct?</Label>
-                                <Button type="button" size="icon" onClick={addOption} variant="secondary">
-                                    <Plus size={18} />
-                                </Button>
-                            </div>
+                    <div>
+                        <Label htmlFor="optionInput">Options</Label>
+                        <div className="flex gap-2 mt-2">
+                            <Input
+                                id="optionInput"
+                                ref={inputRef}
+                                placeholder="Add option"
+                                value={currentOption}
+                                onChange={e => setCurrentOption(e.target.value)}
+                                onKeyDown={handleOptionKeyDown}
+                                className="flex-1"
+                            />
+                            <Button type="button" size="icon" onClick={addOption} variant="secondary" aria-label="Add option">
+                                <Plus size={18} />
+                            </Button>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                            {options.map((option, idx) => (
+                                <div key={idx} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded px-2 py-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={option.isCorrect}
+                                        onChange={() => toggleCorrect(idx)}
+                                        id={`correct-${idx}`}
+                                    />
+                                    <Label htmlFor={`correct-${idx}`} className="flex-1 cursor-pointer">
+                                        {option.text}
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => removeOption(idx)}
+                                        aria-label="Remove option"
+                                        className="text-red-500"
+                                    >
+                                        <X size={16} />
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     </div>
-
-                    <div className="flex flex-col gap-1">
-                        {options.map((option, index) => (
-                            <div key={index} className="flex gap-2 items-center">
-                                <span>{option.text}</span>
-                                {option.isCorrect && <span className="text-green-500 text-xs">(Correct)</span>}
-                                <Button
-                                    type="button"
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={() => removeOption(index)}
-                                    className="text-red-500"
-                                >
-                                    <X size={16} />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                    {optionError && <p className="text-red-500">{optionError}</p>}
-
+                    {formError && <p className="text-red-500 text-sm">{formError}</p>}
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={() => setCreateQuestionModalData(null)}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading}>
-                            {loading ? "Creating..." : "Create"}
+                        <Button type="submit" disabled={loading || !options.length} className="flex items-center gap-2">
+                            {loading && <Loader2 className="animate-spin h-4 w-4" />} Create
                         </Button>
                     </div>
                 </form>
             </div>
-        </>
+        </div>
     );
 };
 

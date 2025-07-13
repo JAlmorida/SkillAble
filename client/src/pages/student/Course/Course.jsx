@@ -1,44 +1,69 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import React from "react";
 import { Link } from "react-router-dom";
+import { useGetCourseProgressQuery } from "@/features/api/courseProgressApi";
 
-const Course = ({ course }) => {
-  console.log(course); // <-- Add this line
+// Stylish progress bar
+const ProgressBar = ({ progress }) => (
+  <div className="w-full mt-3">
+    <div className="flex items-center justify-between mb-1">
+      <span className="text-xs text-blue-400 font-medium">Progress</span>
+      <span className="text-xs text-blue-400 font-semibold">{progress}%</span>
+    </div>
+    <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+      <div
+        className="h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  </div>
+);
+
+const Course = ({ course, isEnrolled }) => {
+  let userProgress = null;
+
+  // Only fetch progress if enrolled
+  const { data: progressData } = useGetCourseProgressQuery(course._id, { skip: !isEnrolled });
+
+  if (isEnrolled && progressData && progressData.data && progressData.data.courseDetails && progressData.data.courseDetails.lectures) {
+    const lectures = progressData.data.courseDetails.lectures;
+    const allLessons = lectures.flatMap((lecture) => lecture.lessons) || [];
+    const totalLessons = allLessons.length;
+    const completedLessons = allLessons.filter((lesson) => lesson.isCompleted).length;
+    const percent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+    userProgress = { enrolled: true, progress: percent };
+  }
+
   return (
-    <Link to={`/course-detail/${course._id}`}>
-      <Card className="overflow-hidden rounded-lg dark:bg-gray-800 bg-white shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
-        <div className="relative">
+    <Link
+      to={`/course-detail/${course._id}`}
+      className="block focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-xl"
+    >
+      <Card className="rounded-xl bg-[#181f2a] dark:bg-[#181f2a] border border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="h-32 overflow-hidden rounded-t-xl">
           <img
             src={course.courseThumbnail}
             alt="course"
-            className="w-full h-36 object-cover rounded-t-lg"
+            className="w-full h-full object-cover"
           />
         </div>
         <CardContent className="px-5 py-4 space-y-3">
-          <h1 className="hover:underline font-bold text-lg truncate">
+          <h1 className="font-bold text-lg text-white truncate">
             {course.courseTitle}
           </h1>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={
-                    course.creator?.photoUrl
-                  }
-                />
-                <AvatarFallback>CN</AvatarFallback>
-              </Avatar>
-              <h1 className="font-medium text-sm">{course.creator?.name}</h1>
-            </div>
-            <Badge className="bg-blue-600 text-white px-2 py-1 text-xs rounded-full">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-blue-100 text-blue-700 px-3 py-1 text-xs rounded-full shadow-sm">
+              {course.category?.name || "Uncategorized"}
+            </Badge>
+            <Badge className="bg-white text-gray-800 px-3 py-1 text-xs rounded-full shadow-sm">
               {course.courseLevel}
             </Badge>
           </div>
-          <div className="text-lg font-bold">
-            <span> {course.coursePrice} </span>
-          </div>
+          {/* Show progress if enrolled */}
+          {userProgress?.enrolled && (
+            <ProgressBar progress={userProgress.progress} />
+          )}
         </CardContent>
       </Card>
     </Link>

@@ -91,32 +91,21 @@ const CallPage = () => {
 const CallContent = () => {
   const { useCallCallingState } = useCallStateHooks()
   const callingState = useCallCallingState()
-  const navigate = useNavigate()
-  const { id: callId } = useParams()
-  const { data: authUserData } = useGetAuthUserQuery()
-  const authUser = authUserData?.user
 
   useEffect(() => {
-    if (callingState === CallingState.LEFT && callId && authUser) {
-      // Split the callId and get the other user's id
-      const ids = callId.split('-')
-      const targetUserId = ids.find(id => id !== authUser._id)
-      if (targetUserId) {
-        navigate(`/message/${targetUserId}`)
-      } else {
-        navigate('/message')
-      }
+    if (callingState === CallingState.LEFT) {
+      window.close();
     }
-  }, [callingState, navigate, callId, authUser])
+  }, [callingState]);
 
   return (
     <div className='overflow-hidden'>
-    <StreamTheme>
-      <SpeakerLayout />
-      <CallControls />
-    </StreamTheme>
+      <StreamTheme>
+        <SpeakerLayout />
+        <CallControls />
+      </StreamTheme>
     </div>
-  )
-}
+  );
+};
 
 export default CallPage

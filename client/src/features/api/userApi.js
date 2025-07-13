@@ -38,13 +38,30 @@ export const userApi = createApi({
       }),
       providesTags: ["Users"], 
     }), 
-    getUserEnrollments: builder.query({
+    getUserEnrollmentDetails: builder.query({
       query: (userId) => ({
-        url: `admin/users/${userId}/enrollments`, 
-        method: "GET"
-      }), 
+        url: `admin/users/${userId}/enrollments`,
+        method: "GET",
+      }),
       providesTags: (result, error, userId) => [{ type: "UserEnrollments", id: userId }]
-    })
+    }), 
+    getSettings: builder.query({
+      query: () => 'settings',
+    }),
+    updateSettings: builder.mutation({
+      query: (settings) => ({
+        url: 'settings',
+        method: 'POST',
+        body: settings,
+      }),
+    }),
+    changeUserRole: builder.mutation({
+      query: ({ userId, newRole }) => ({
+        url: "/change-role", // NOT /users/change-role
+        method: "PATCH",
+        body: { userId, newRole },
+      }),
+    }),
   }),
 });
 
@@ -52,5 +69,8 @@ export const {
   useLoadUserQuery,
   useUpdateUserMutation, 
   useGetAllUsersQuery, 
-  useGetUserEnrollmentsQuery, 
+  useGetUserEnrollmentDetailsQuery, 
+  useGetSettingsQuery,
+  useUpdateSettingsMutation, 
+  useChangeUserRoleMutation
 } = userApi;

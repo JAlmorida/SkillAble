@@ -35,9 +35,10 @@ const authSlice = createSlice({
         state.token = null;
         state.isAuthenticated = false;
         
-        // Clear localStorage
+        // Only remove session keys:
         localStorage.removeItem("user");
         localStorage.removeItem("token");
+        // DO NOT remove user-specific accessibility keys!
     },
     setUser: (state, action) => {
         state.user = action.payload;

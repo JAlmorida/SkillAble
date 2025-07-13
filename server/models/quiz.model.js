@@ -16,8 +16,16 @@ const quizSchema = new mongoose.Schema({
     },
     lesson: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Lesson', 
-        required: true 
+        ref: 'Lesson'
+    },
+    courseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course'
+    },
+    maxAttempts: {
+        type: Number,
+        default: 5,
+        min: 1
     }
 }, {timestamps: true })
 

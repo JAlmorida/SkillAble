@@ -45,11 +45,12 @@ export const register = async (req, res) => {
     });
 
     try {
-      await upsertStreamUser({
+      const result = await upsertStreamUser({
         id: newUser._id.toString(),
         name: newUser.name,
-        image: newUser.photoUrl || "",
+        email: newUser.email,
       });
+      console.log("Upserted user to Stream:", result);
       console.log(`Stream user created for ${newUser.name}`);
     } catch (error) {
       console.log("Error creating Stream user:", error);
@@ -91,6 +92,13 @@ export const login = async (req, res) => {
         message: "Incorrect email or password",
       });
     }
+
+    await upsertStreamUser({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+    });
+
     generateToken(res, user, `Welcome back ${user.name}`);
   } catch (error) {
     console.log(error);
@@ -140,19 +148,17 @@ export const onboard = async (req, res) => {
       return res.status(404).json({ meesage: "User not found " });
 
     try {
-      await upsertStreamUser({
+      const result = await upsertStreamUser({
         id: updatedUser._id.toString(),
         name: updatedUser.name,
-        image: updatedUser.photoUrl || "",
+        email: updatedUser.email,
       });
+      console.log("Upserted user to Stream:", result);
       console.log(
         `Stream user updated after onboarding for ${updatedUser.name}`
       );
-    } catch (streamError) {
-      console.log(
-        "Error updating Stream user during onboarding:",
-        streamError.message
-      );
+    } catch (error) {
+      console.log("Error upserting Stream user:", error);
     }
     res.status(200).json({
       success: true,
