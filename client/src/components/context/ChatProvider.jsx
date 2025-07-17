@@ -77,25 +77,6 @@ export const ChatProvider = ({ user, children }) => {
     };
   }, [authUser, tokenData]);
 
-  // Debug: log state every render
-  useEffect(() => {
-    console.log("Current chatNotifications state:", chatNotifications);
-  }, [chatNotifications]);
-
-  useEffect(() => {
-    console.log("ChatProvider mounted", Math.random());
-  }, []);
-
-  useEffect(() => {
-    console.log("ChatProvider instance ID:", uniqueId.current);
-  }, []);
-
-  useEffect(() => {
-    setTimeout(() => {
-      console.log("chatNotifications after set:", chatNotifications);
-    }, 1000);
-  }, [chatNotifications]);
-
   return (
     <ChatContext.Provider value={{
       chatClient,

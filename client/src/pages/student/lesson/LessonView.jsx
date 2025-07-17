@@ -95,14 +95,7 @@ const LessonView = () => {
               dangerouslySetInnerHTML={{ __html: removeColorStyles(lesson.lessonDescription) }}
             />
           )}
-          {lesson.resourceFiles && lesson.resourceFiles.length > 0 && (
-            <div>
-              <h3 className="mb-2 font-semibold">Lesson Resource</h3>
-              {lesson.resourceFiles.map((file, idx) => (
-                <FileCard key={idx} file={file} showDelete={false} />
-              ))}
-            </div>
-          )}
+          {/* Removed the resource section from here */}
           {!lesson.lessonDescription && (!lesson.resourceFiles || lesson.resourceFiles.length === 0) && (
             <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-300 mb-6">
               No description or resources available for this lesson.
@@ -117,48 +110,20 @@ const LessonView = () => {
             <h2 className="text-xl font-semibold mb-4">Lesson Video</h2>
             {lesson?.videoUrl && <VideoWithCaption videoUrl={lesson.videoUrl} />}
           </div>
-          {/* Actions */}
+          {/* Lesson Resource */}
           <div className="rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#18181b] shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Lesson Progress</h2>
-            {/* Progress Status */}
-            <div className="flex items-center gap-2 mb-6">
-              <div className="flex">
-                <div className="text-sm font-medium mb-1">Status:</div>
-                <Progress 
-                  value={isLessonCompletedByUser ? 100 : 0} 
-                  className="h-2" 
-                />
-              </div>
+            <h2 className="text-lg font-semibold mb-4">Lesson Resource</h2>
+            {lesson.resourceFiles && lesson.resourceFiles.length > 0 ? (
               <div>
-                {isLessonCompletedByUser ? (
-                  <Badge className="bg-green-500 text-white">100%</Badge>
-                ) : (
-                  <Badge variant="outline">0%</Badge>
-                )}
+                {lesson.resourceFiles.map((file, idx) => (
+                  <FileCard key={idx} file={file} showDelete={false} />
+                ))}
               </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3">
-              <Button 
-                onClick={handleBackToCourse}
-                variant="outline"
-                className="w-full"
-              >
-                Back to Course
-              </Button>
-              
-              {!isLessonCompletedByUser && (!lessonQuizzesData?.data?.length || lessonQuizzesData?.data?.length === 0) && (
-                <Button 
-                  onClick={handleMarkComplete}
-                  disabled={isUpdating}
-                  className="w-full bg-green-500 hover:bg-green-600"
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Mark as Complete
-                </Button>
+                ) : (
+              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-300 mb-6">
+                No resources available for this lesson.
+              </div>
               )}
-            </div>
           </div>
         </div>
       </div>

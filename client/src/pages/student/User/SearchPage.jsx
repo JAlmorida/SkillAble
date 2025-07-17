@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import Filter from "../Course/Filter";
 import SearchResult from "./SearchResult";
-import { useGetSearchCourseQuery } from "@/features/api/courseApi";
+import { useSearchCoursesQuery } from "@/features/api/courseApi";
 import { useSearchParams, Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,43 +13,51 @@ const SearchPage = () => {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortByLevel, setSortByLevel] = useState("");
 
-  const { data, isLoading } = useGetSearchCourseQuery({
-    searchQuery: query,
+  const { data, isLoading } = useSearchCoursesQuery({
+    searchQuery: query && query.trim() !== "" ? query : undefined,
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-    sortByLevel
+    sortByLevel: sortByLevel || undefined
   });
-  console.log("Search API data:", data);
 
-  // FIX: Support both array and object API responses
   const courses = Array.isArray(data) ? data : (data?.courses || []);
   const isEmpty = !isLoading && courses.length === 0;
 
   const handleFilterChange = (categories, level) => {
     setSelectedCategories(categories);
     setSortByLevel(level);
-  }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 ">
+    <div className="max-w-7xl mx-auto p-4 md:p-8">
       <div className="my-6">
-        <h1 className="font=bold text-xl md:2xl">Results for "{query}"</h1>
-        <p>
-          Showing results for {""}
-          <span className="text-blue-800 font-bold italic">{query}</span>
+        <h1 className="font-bold text-2xl md:text-3xl text-gray-900 dark:text-white mb-1">
+          Results for {query ? <span className="text-blue-600 dark:text-blue-400">"{query}"</span> : <span className="text-blue-600 dark:text-blue-400">All Courses</span>}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 text-base">
+          Showing results for <span className="text-blue-800 dark:text-blue-300 font-bold italic">{query ? query : "All Courses"}</span>
         </p>
       </div>
-      <div className="flex flex-col md:flex-row font-bold gap-10">
-        <Filter handleFilterChange={handleFilterChange}/>
-        <div className="flex-1">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, idx) => (
-              <CourseSkeleton key={idx} />
-            ))
-          ) : isEmpty ? (
-            <CourseNotFound />
-          ) : (
-            courses.map((course) => <SearchResult key={course._id} course={course}/>)
-          )}
-        </div>
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Filter Sidebar */}
+        <aside className="md:w-1/4 w-full md:sticky md:top-24">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm">
+            <Filter handleFilterChange={handleFilterChange} />
+          </div>
+        </aside>
+        {/* Results */}
+        <main className="flex-1">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm min-h-[300px]">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, idx) => (
+                <CourseSkeleton key={idx} />
+              ))
+            ) : isEmpty ? (
+              <CourseNotFound />
+            ) : (
+              courses.map((course) => <SearchResult key={course._id} course={course} />)
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

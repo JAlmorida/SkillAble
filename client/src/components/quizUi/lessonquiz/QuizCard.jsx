@@ -1,12 +1,17 @@
-import { useGetQuizByIdQuery } from '@/features/api/quizApi';
+import { useGetQuizByIdQuery, useGetInProgressAttemptQuery } from '@/features/api/quizApi';
 import React from 'react'
 import { Card, CardContent } from '../../ui/card';
 import { Link } from 'react-router-dom';
 import { Badge } from '../../ui/badge';
-import { Newspaper, CheckCircle } from 'lucide-react';
+import { Newspaper, CheckCircle, RotateCcw } from 'lucide-react';
 
-const QuizCard = ({ quizId, courseId, lectureProgress }) => {
+const QuizCard = ({ quizId, courseId, lectureProgress, lessonId }) => {
   const { data: quiz, isLoading } = useGetQuizByIdQuery(quizId, { skip: !quizId });
+  
+  // Check for in-progress attempt
+  const { data: inProgressAttempt, isLoading: inProgressLoading } = useGetInProgressAttemptQuery(quizId, {
+    skip: !quizId
+  });
 
   // This is the new, correct logic.
   // It checks if THIS user has attempted THIS quiz using their specific progress data.
@@ -14,7 +19,10 @@ const QuizCard = ({ quizId, courseId, lectureProgress }) => {
     qp => qp.quizId === quizId && qp.attempted
   );
 
-  if (isLoading) {
+  // Check if there's an in-progress attempt
+  const hasInProgressAttempt = inProgressAttempt?.data && !isCompletedForUser;
+
+  if (isLoading || inProgressLoading) {
     return (
       <Card className="w-full animate-pulse">
         <CardContent className="p-4">
@@ -28,7 +36,7 @@ const QuizCard = ({ quizId, courseId, lectureProgress }) => {
   if (!quizId) return null;
 
   return (
-    <Link to={`/student/quiz/${courseId}/${quizId}`} className="w-full block">
+    <Link to={`/student/quiz/${courseId}/${quizId}?lessonId=${lessonId}`} className="w-full block">
       <Card className="w-full hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
@@ -37,7 +45,13 @@ const QuizCard = ({ quizId, courseId, lectureProgress }) => {
               {quiz.data.quizTitle}
             </h2>
             <div className="flex items-center gap-2">
-              {isCompletedForUser && (
+              {hasInProgressAttempt && (
+                <Badge className="bg-orange-500 text-white flex items-center gap-1">
+                  <RotateCcw className="h-3 w-3" />
+                  Continue Quiz
+                </Badge>
+              )}
+              {isCompletedForUser && !hasInProgressAttempt && (
                 <Badge className="bg-green-500 text-white flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
                   Completed

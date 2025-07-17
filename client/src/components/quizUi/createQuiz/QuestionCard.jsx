@@ -11,12 +11,12 @@ import { Trash2 } from 'lucide-react'
 
 const QuestionCard = ({ question, deleteQuestionHandler }) => {
     return (
-        <Card className="bg-[#18181b] border border-border rounded-xl shadow transition-shadow hover:shadow-lg w-full">
+        <Card className="bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 rounded-xl shadow transition-shadow hover:shadow-lg w-full">
             <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="question" className="border-none">
                     <AccordionTrigger className="px-6 py-4 hover:no-underline">
                         <div className="flex items-center justify-between w-full">
-                            <span className="text-lg font-semibold text-white line-clamp-1">{question.questionText}</span>
+                            <span className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-1">{question.questionText}</span>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -27,8 +27,8 @@ const QuestionCard = ({ question, deleteQuestionHandler }) => {
                                         key={option._id || index}
                                         className={`rounded-lg py-2 px-3 text-base border transition-colors
                                             ${option.isCorrect
-                                                ? "border-green-500 bg-green-900/30 text-green-200"
-                                                : "border-slate-700 bg-slate-800 text-slate-200"
+                                                ? "border-green-500 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
+                                                : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-slate-200"
                                             }`}
                                     >
                                         {option.text}

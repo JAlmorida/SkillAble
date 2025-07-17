@@ -47,14 +47,14 @@ const CreateQuestion = () => {
 
   return (
     <>
-      <div className="relative flex flex-col gap-6 w-full min-h-screen bg-transparent">
+      <div className="relative flex flex-col gap-6 w-full min-h-screen bg-white dark:bg-[#111112]">
         {/* Header */}
-        <header className="w-full flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-border py-5 px-6 bg-background/80 backdrop-blur sticky top-0 z-10">
-          <h1 className="text-2xl font-bold text-white flex-1">
+        <header className="w-full flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 py-5 px-6 bg-gray-100/80 dark:bg-[#18181b]/80 backdrop-blur sticky top-0 z-10">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-1">
             {quiz?.quizTitle || 'Add Questions'}
           </h1>
           <div className="flex items-center gap-x-6">
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               {questions.length} Question{questions.length !== 1 ? 's' : ''}
             </span>
             <Button
@@ -75,7 +75,7 @@ const CreateQuestion = () => {
             </div>
           ) : questions.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[40vh] text-lg gap-3">
-              <span className="text-gray-400">No questions found</span>
+              <span className="text-gray-500 dark:text-gray-400">No questions found</span>
               <Button
                 onClick={() => setCreateQuestionModalData({ ...quiz })}
                 className="bg-blue-600 text-white hover:bg-blue-700"
@@ -85,7 +85,7 @@ const CreateQuestion = () => {
             </div>
           ) : (
             questions.map((ques) => (
-              <div key={ques?._id} className="bg-background  px-3">
+              <div key={ques?._id} className="bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
                 <QuestionCard
                   deleteQuestionHandler={deleteQuestionHandler}
                   question={ques}

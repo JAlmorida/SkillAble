@@ -258,10 +258,6 @@ export const getCourseById = async (req, res) => {
         message: "course not found!",
       });
     }
-    // Remove old deadline logic
-    // const isExpired = course.deadlineEnabled && course.deadline && new Date() > new Date(course.deadline);
-
-    // Instead, just return the course object (expiry is per-user, not global)
     return res.status(200).json({
       course,
     });
@@ -302,19 +298,32 @@ export const togglePublishCourse = async (req, res) => {
 
 export const searchCourses = async (req, res) => {
   try {
-    const query = req.query.query || '';
-    // Only search published courses
-    const courses = await Course.find({
-      isPublished: true,
-      $or: [
+    const { query, categories, sortByLevel } = req.query;
+    let filter = { isPublished: true };
+
+    if (query) {
+      filter.$or = [
         { courseTitle: { $regex: query, $options: 'i' } },
         { subTitle: { $regex: query, $options: 'i' } }
-      ]
-    })
-    .populate({ path: "category", select: "name" })
-    .limit(10);
+      ];
+    }
 
-    res.json(courses);
+    if (categories) {
+      if (Array.isArray(categories)) {
+        filter.category = { $in: categories };
+      } else {
+        filter.category = categories;
+      }
+    }
+
+    if (sortByLevel) {
+      filter.courseLevel = sortByLevel;
+    }
+
+    const courses = await Course.find(filter)
+      .populate({ path: "category", select: "name" });
+
+    res.json({ courses }); // <-- THIS IS THE FIX
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

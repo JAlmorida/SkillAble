@@ -3,6 +3,7 @@ import { deleteMediaFromCloudinary, uploadMedia } from "../utils/cloudinary.js";
 import { CourseProgress } from "../models/courseProgress.js";
 import { Course } from "../models/course.model.js";
 import { Attempt } from "../models/attempt.model.js";
+import { Question } from "../models/question.model.js";
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -172,10 +173,12 @@ export const getUserEnrollmentDetails = async (req, res) => {
 
     const enrollmentDetails = await Promise.all(
       user.enrolledCourses.map(async (enrolledCourse) => {
-        const course = await Course.findById(enrolledCourse._id).populate({
-          path: 'lectures',
-          populate: { path: 'lessons' }
-        });
+        const course = await Course.findById(enrolledCourse._id)
+          .populate('category', 'name')
+          .populate({
+            path: 'lectures',
+            populate: { path: 'lessons' }
+          });
 
         if (!course) {
             return {
@@ -228,7 +231,7 @@ export const getUserEnrollmentDetails = async (req, res) => {
     let attempts = await Attempt.find({ userId })
       .populate({
         path: "quizId",
-        select: "quizTitle lesson courseId",
+        select: "quizTitle lesson courseId", // REMOVE questions from select
         populate: [
           { path: "lesson", select: "lessonTitle lecture" },
           { path: "courseId", select: "courseTitle" }
@@ -236,11 +239,20 @@ export const getUserEnrollmentDetails = async (req, res) => {
       })
       .select("quizId score total createdAt");
 
-    // Second populate: lesson.lecture
-    attempts = await Attempt.populate(attempts, {
-      path: "quizId.lesson.lecture",
-      select: "lectureTitle"
-    });
+    // After fetching attempts, fetch the question count for each quiz
+    const quizIdToQuestionCount = {};
+    for (const attempt of attempts) {
+      const quizId = attempt.quizId?._id;
+      if (quizId && quizIdToQuestionCount[quizId] === undefined) {
+        // Use the correct field name here!
+        const count = await Question.countDocuments({ quizId: quizId }); // or quizId: quizId
+        quizIdToQuestionCount[quizId] = count;
+      }
+      // Attach the count to the attempt for frontend use
+      if (quizId) {
+        attempt._doc.totalQuestions = quizIdToQuestionCount[quizId];
+      }
+    }
 
     console.timeEnd("getUserEnrollmentDetails");
     return res.status(200).json({

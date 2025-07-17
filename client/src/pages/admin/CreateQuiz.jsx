@@ -39,12 +39,12 @@ const CreateQuiz = () => {
   const existingQuiz = quizData?.data?.[0] || null;
 
   return (
-    <div className="w-full mx-auto bg-[#18181b] border border-border rounded-xl shadow p-5">
+    <div className="w-full mx-auto bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-border rounded-xl shadow p-5">
       <div className="mb-4">
-        <h2 className="font-bold text-2xl text-white">
+        <h2 className="font-bold text-2xl text-gray-900 dark:text-white">
           {existingQuiz ? "Quiz for this Lesson" : "Create a Quiz"}
         </h2>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
           {existingQuiz
             ? "You can view or edit the quiz for this lesson below."
             : "Set up a quiz for this lesson. All fields are required."}
@@ -70,18 +70,18 @@ const CreateQuiz = () => {
           }}
         >
           <div>
-            <Label className="text-gray-200">Quiz Title</Label>
+            <Label className="text-gray-900 dark:text-gray-200">Quiz Title</Label>
             <Input
               value={quizTitle}
               onChange={e => setQuizTitle(e.target.value)}
               placeholder="Enter quiz title"
-              className="mt-1"
+              className="mt-1 bg-white dark:bg-[#23232a] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
               required
             />
           </div>
           <div className="flex gap-4">
             <div className="flex-1">
-              <Label className="text-gray-200">Timer (minutes)</Label>
+              <Label className="text-gray-900 dark:text-gray-200">Timer (minutes)</Label>
               <Input
                 type="number"
                 min={5}
@@ -89,18 +89,18 @@ const CreateQuiz = () => {
                 value={quizTimer}
                 onChange={e => setQuizTimer(Number(e.target.value))}
                 placeholder="Set timer"
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-[#23232a] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
                 required
               />
             </div>
             <div className="flex-1">
-              <Label className="text-gray-200">Max Attempts</Label>
+              <Label className="text-gray-900 dark:text-gray-200">Max Attempts</Label>
               <Input
                 type="number"
                 min={1}
                 value={maxAttempts}
                 onChange={e => setMaxAttempts(Math.max(1, Number(e.target.value)))}
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-[#23232a] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
                 required
               />
             </div>

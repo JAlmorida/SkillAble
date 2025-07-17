@@ -144,106 +144,101 @@ const CourseDetail = () => {
   if (isLoading) return <h1>Loading...</h1>;
   if (isError) return <h1>Failed to load course details</h1>;
 
+  // Alternative modern approach
   return (
-    <div key={refreshKey} className="space-y-5">
-      <div className="bg-[#2D2F31] text-white">
-        <div className="max-w-7xl mx-auto py-8 px-4 md:px-8 flex flex-col gap-2">
-          <h1 className="font-bold text-2xl md:text-3xl flex items-center gap-2">
-            {course?.courseTitle}
-            {courseStatus?.completed && (
-              <Badge className="bg-green-600 text-white ml-2">Completed</Badge>
-            )}
-            {course?.expiryEnabled && isExpired && (
-              <Badge className="bg-red-600 text-white ml-2">Expired</Badge>
-            )}
-          </h1>
-          <p className="text-base md:text-lg">{course?.subTitle || "Course Subtitle"}</p>
-          <div className="flex items-center gap-2 text-sm">
-            <BadgeInfo size={16} />
-            <p>Last updated: {course?.createdAt.split("T")[0]}</p>
-          </div>
-          <p>Students Enrolled: {course?.enrolledStudents.length}</p>
-
-          {/* Expiry Info */}
-          {course?.expiryEnabled ? (
-            expiresAt ? (
-              <>
-                <div className="text-gray-400">
-                  Time left on this course: <span className="font-semibold">{getTimeLeft()}</span>
-                </div>
-                <div className="text-gray-400">
-                  Your access expires on:{" "}
-                  <span className="font-semibold">
-                    {new Date(expiresAt).toLocaleString(undefined, {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+    <div key={refreshKey} className="min-h-screen bg-slate-50 dark:bg-background">
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+            <div className="flex-1">
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3">
+                {course?.courseTitle}
+              </h1>
+              <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">
+                {course?.subTitle || "Course Subtitle"}
+              </p>
+              
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {courseStatus?.completed && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    ✅ Completed
                   </span>
-                </div>
-              </>
-            ) : (
-              <div className="text-gray-400">
-                <span className="font-semibold">Expiry date not set.</span>
+                )}
+                {course?.expiryEnabled && isExpired && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                    ⏰ Expired
+                  </span>
+                )}
               </div>
-            )
-          ) : (
-            <div className="text-gray-400">
-              <span className="font-semibold">No expiry (unlimited access)</span>
+
+              {/* Meta Info */}
+              <div className="flex flex-wrap gap-4 text-sm text-slate-500 dark:text-slate-400">
+                <span>Updated: {course?.createdAt.split("T")[0]}</span>
+                <span>{course?.enrolledStudents.length} Students</span>
+              </div>
             </div>
-          )}
-          {isExpired && (
-            <div className="text-red-500 font-bold">
-              Course Expired
-            </div>
-          )}
+          </div>
         </div>
       </div>
-      <div className="max-w-8xl mx-auto my-5 px-4 md:px-8 flex flex-col lg:flex-row justify-between gap-10">
-        <div className="w-full lg:w-2/3 space-y-5">
-          {/* Description Card */}
-          <div className="bg-[#23232a] rounded-2xl shadow-lg border border-[#23232a] p-8 mb-10 w-full min-h-[16rem]">
-            <h1 className="font-bold text-xl md:text-2xl text-white mb-3">What You'll Learn</h1>
-            {course?.description && (
-              <div
-                className="text-base text-slate-200 leading-relaxed max-h-64 overflow-y-auto pr-2"
-                dangerouslySetInnerHTML={{ __html: course.description }}
-              />
-            )}
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Actions */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+              <div className="space-y-4">
+                {enrolled ? (
+                  <>
+                    <Button 
+                      onClick={handleContinueCourse}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 font-medium transition-colors"
+                    >
+                      Continue Course
+                    </Button>
+                    <CourseGroupChatButton key={refreshKey} courseId={courseId} enrolled={enrolled} />
+                  </>
+                ) : (
+                  <EnrollCourseButton courseId={courseId} onEnrolled={handleAfterEnroll} />
+                )}
+              </div>
+            </div>
+
+            {/* Video */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="aspect-video bg-slate-900">
+                {course?.lectures?.[0]?.videoUrl ? (
+                  <VideoWithCaption videoUrl={course.lectures[0].videoUrl} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                    <div className="text-center">
+                      <PlayCircle size={48} className="mx-auto mb-2 opacity-50" />
+                      <p>No Preview Available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-8">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+                What You'll Learn
+              </h2>
+              {course?.description && (
+                <div
+                  className="text-slate-700 dark:text-slate-300 leading-relaxed prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: course.description }}
+                />
+              )}
+            </div>
           </div>
         </div>
-        <div className="w-full lg:w-1/3">
-  <div className="bg-[#23232a] rounded-2xl shadow-lg border border-[#23232a] overflow-hidden flex flex-col">
-    <div className="aspect-video bg-black mb-4">
-      {course?.lectures?.[0]?.videoUrl ? (
-        <VideoWithCaption videoUrl={course.lectures[0].videoUrl} />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-slate-400">
-          No Preview Available
-        </div>
-      )}
-    </div>
-    <div className="px-5 pb-2">
-      <h2 className="text-base font-semibold text-white mb-2">
-        {course?.lectures?.[0]?.lectureTitle || "Lecture title"}
-      </h2>
-    </div>
-    <div className="px-5 pb-5 flex flex-col gap-3">
-      {enrolled ? (
-        <>
-          <Button onClick={handleContinueCourse} className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-semibold">
-            Continue Course
-          </Button>
-          <CourseGroupChatButton key={refreshKey} courseId={courseId} enrolled={enrolled} />
-        </>
-      ) : (
-        <EnrollCourseButton courseId={courseId} onEnrolled={handleAfterEnroll} />
-      )}
-    </div>
-  </div>
-</div>
       </div>
     </div>
   );

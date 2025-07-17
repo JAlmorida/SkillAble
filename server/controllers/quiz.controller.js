@@ -379,8 +379,7 @@ export const getUserAttemptsForQuiz = async (req, res) => {
             });
         }
 
-        const attempts = await Attempt.find({ userId, quizId })
-            .sort({ createdAt: -1 }); // Most recent first
+        const attempts = await Attempt.find({ userId, quizId }).sort({ createdAt: -1 }); // Most recent first
 
         const maxAttempts = quiz.maxAttempts || 5;
 
@@ -434,102 +433,201 @@ export const getInProgressAttempt = async (req, res) => {
 };
 
 export const submitQuizAttempt = async (req, res) => {
-  try {
-    const { attemptId } = req.params;
-    const attempt = await Attempt.findById(attemptId);
-    if (!attempt) {
-      return res.status(404).json({ message: 'Attempt not found' });
-    }
-    if (attempt.status === 'completed') {
-      return res.status(400).json({ message: 'Attempt already submitted' });
-    }
+    try {
+        const { attemptId } = req.params;
+        const { answers } = req.body;
+        const userId = req.id;
 
-    // Calculate score
-    const questions = await Question.find({ quiz: attempt.quizId });
-    let score = 0;
-    for (const question of questions) {
-      const userAnswer = attempt.answers.find(
-        (ans) => ans.questionId.toString() === question._id.toString()
-      );
-      if (userAnswer) {
-        const selectedOption = question.options.find(
-          (opt) => opt._id.toString() === userAnswer.selectedOption.toString()
+        console.log("=== SUBMIT QUIZ DEBUG ===");
+        console.log("Request params:", req.params);
+        console.log("Request body:", req.body);
+        console.log("User ID from token:", userId);
+
+        // Check if user is authenticated
+        if (!userId) {
+            console.log("ERROR: No user ID found in request");
+            return res.status(401).json({ 
+                message: "Authentication required",
+                error: "No user ID found"
+            });
+        }
+
+        // Find the attempt
+        const attempt = await Attempt.findById(attemptId);
+        console.log("Found attempt:", attempt ? {
+            _id: attempt._id,
+            userId: attempt.userId,
+            quizId: attempt.quizId,
+            status: attempt.status
+        } : "NOT FOUND");
+
+        if (!attempt) {
+            return res.status(404).json({ message: "Attempt not found" });
+        }
+
+        // FIX: Convert both to strings for comparison
+        const tokenUserIdString = userId.toString();
+        const attemptUserIdString = attempt.userId.toString();
+        
+        console.log("Comparing user IDs:");
+        console.log("Token user ID (string):", tokenUserIdString);
+        console.log("Attempt user ID (string):", attemptUserIdString);
+        console.log("Are they equal?", tokenUserIdString === attemptUserIdString);
+
+        if (tokenUserIdString !== attemptUserIdString) {
+            console.log("ERROR: User ID mismatch - forbidden access");
+            return res.status(403).json({ 
+                message: "Not authorized to submit this attempt",
+                error: "User ID mismatch",
+                tokenUserId: tokenUserIdString,
+                attemptUserId: attemptUserIdString
+            });
+        }
+
+        // Get quiz details
+        const quiz = await Quiz.findById(attempt.quizId);
+        if (!quiz) {
+            console.error("Quiz not found for attempt:", attempt.quizId);
+            return res.status(404).json({ message: "Quiz not found" });
+        }
+
+        // FIX: Get questions separately (not populated)
+        const questions = await Question.find({ quizId: attempt.quizId });
+        console.log("Found questions:", questions.length);
+
+        if (!questions || questions.length === 0) {
+            console.error("No questions found for quiz:", attempt.quizId);
+            return res.status(404).json({ message: "No questions found for this quiz" });
+        }
+
+        // Calculate score
+        let correctAnswers = 0;
+        const totalQuestions = questions.length;
+
+        answers.forEach(userAnswer => {
+            const question = questions.find(q => q._id.toString() === userAnswer.questionId);
+            if (question) {
+                const correctOption = question.options.find(opt => opt.isCorrect);
+                if (correctOption && correctOption._id.toString() === userAnswer.selectedOption) {
+                    correctAnswers++;
+                }
+            }
+        });
+
+        const score = Math.round((correctAnswers / totalQuestions) * 10);
+
+        console.log("Quiz scoring:", { correctAnswers, totalQuestions, score });
+
+        // Update attempt with final data
+        attempt.answers = answers;
+        attempt.score = score;
+        attempt.status = "completed";
+        attempt.completedAt = new Date();
+        await attempt.save();
+        const fresh = await Attempt.findById(attemptId);
+        console.log("DB after save:", fresh);
+
+        console.log("Attempt updated:", { attemptId, score, status: attempt.status });
+
+        // Mark all other in-progress attempts as completed
+        await Attempt.updateMany(
+          { userId, quizId: attempt.quizId, status: "in-progress", _id: { $ne: attempt._id } },
+          { $set: { status: "completed", completedAt: new Date() } }
         );
-        if (selectedOption && selectedOption.isCorrect) {
-          score += 1;
+
+        // Log all attempts for this user/quiz after update
+        const allAttempts = await Attempt.find({ userId, quizId: attempt.quizId });
+        console.log("All attempts after update:", allAttempts);
+
+        // Update course progress
+        const courseProgress = await CourseProgress.findOne({ 
+            courseId: quiz.courseId, 
+            userId 
+        });
+
+        if (courseProgress) {
+            // Find or create lectureProgress
+            let lectureProgress = courseProgress.lectureProgress.find(
+                lp => lp.lectureId && quiz.lectureId && lp.lectureId.toString() === quiz.lectureId.toString()
+            );
+
+            if (!lectureProgress) {
+                lectureProgress = {
+                    lectureId: quiz.lectureId,
+                    completed: false,
+                    lessonProgress: [],
+                    quizProgress: []
+                };
+                courseProgress.lectureProgress.push(lectureProgress);
+            }
+
+            // Update quiz progress
+            let quizProgress = lectureProgress.quizProgress.find(
+                qp => qp.quizId && quiz._id && qp.quizId.toString() === quiz._id.toString()
+            );
+
+            if (!quizProgress) {
+                quizProgress = {
+                    quizId: quiz._id,
+                    attempted: true,
+                    score: score,
+                    completedAt: new Date()
+                };
+                lectureProgress.quizProgress.push(quizProgress);
+            } else {
+                quizProgress.attempted = true;
+                quizProgress.score = score;
+                quizProgress.completedAt = new Date();
+            }
+
+            // Find or create lessonProgress for the lesson associated with this quiz
+            if (courseProgress && quiz.lesson) {
+                let lessonProgress = lectureProgress.lessonProgress.find(
+                    lp => lp.lessonId && lp.lessonId.toString() === quiz.lesson.toString()
+                );
+                if (!lessonProgress) {
+                    lessonProgress = {
+                        lessonId: quiz.lesson,
+                        completed: true,
+                        completedAt: new Date()
+                    };
+                    lectureProgress.lessonProgress.push(lessonProgress);
+                } else {
+                    lessonProgress.completed = true;
+                    lessonProgress.completedAt = new Date();
+                }
+                await courseProgress.save();
+            }
+
+            // Check if lecture is completed
+            const totalLessons = lectureProgress.lessonProgress.length;
+            const totalQuizzes = lectureProgress.quizProgress.length;
+            const completedLessons = lectureProgress.lessonProgress.filter(lp => lp.completed).length;
+            const completedQuizzes = lectureProgress.quizProgress.filter(qp => qp.attempted).length;
+
+            lectureProgress.completed = (completedLessons === totalLessons) && (completedQuizzes === totalQuizzes);
+
+            // Check if course is completed
+            courseProgress.completed = courseProgress.lectureProgress.every(lp => lp.completed);
+
+            await courseProgress.save();
+            console.log("Course progress updated");
         }
-      }
+
+        // Return the result with score
+        res.status(200).json({
+            message: "Quiz submitted successfully",
+            score: score,
+            totalQuestions: totalQuestions,
+            correctAnswers: correctAnswers,
+            status: "completed"
+        });
+
+    } catch (error) {
+        console.error("Error submitting quiz attempt:", error);
+        res.status(500).json({ 
+            message: "Failed to submit quiz attempt", 
+            error: error.message 
+        });
     }
-
-    attempt.score = score;
-    attempt.status = 'completed';
-    attempt.completedAt = new Date();
-    await attempt.save();
-
-    // --- UPDATE COURSE PROGRESS ---
-    // Find the quiz to get lesson and course info
-    const quiz = await Quiz.findById(attempt.quizId);
-    if (quiz) {
-      const userId = attempt.userId;
-      const courseId = quiz.courseId;
-      const lessonId = quiz.lesson;
-      // Find the lecture containing this lesson
-      const lecture = await (await import('../models/lecture.model.js')).Lecture.findOne({ lessons: lessonId });
-      if (lecture) {
-        const lectureId = lecture._id;
-        let courseProgress = await CourseProgress.findOne({ courseId, userId });
-        if (!courseProgress) {
-          // Create if not exists
-          courseProgress = new CourseProgress({
-            userId,
-            courseId,
-            completed: false,
-            lectureProgress: [],
-          });
-        }
-        // Find or create lectureProgress
-        let lectureProgress = courseProgress.lectureProgress.find(
-          (lp) => lp.lectureId.toString() === lectureId.toString()
-        );
-        if (!lectureProgress) {
-          lectureProgress = {
-            lectureId,
-            completed: false,
-            lessonProgress: [],
-            quizProgress: []
-          };
-          courseProgress.lectureProgress.push(lectureProgress);
-        }
-        // Find or create quizProgress
-        let quizProgress = lectureProgress.quizProgress.find(
-          (qp) => qp.quizId.toString() === quiz._id.toString()
-        );
-        if (!quizProgress) {
-          quizProgress = {
-            quizId: quiz._id,
-            attempted: true,
-            score,
-            completedAt: new Date()
-          };
-          lectureProgress.quizProgress.push(quizProgress);
-        } else {
-          quizProgress.attempted = true;
-          quizProgress.score = score;
-          quizProgress.completedAt = new Date();
-        }
-        await courseProgress.save();
-      }
-    }
-    // --- END UPDATE COURSE PROGRESS ---
-
-    res.json({
-      message: 'Quiz submitted successfully',
-      score,
-      total: questions.length,
-      attempt,
-    });
-  } catch (error) {
-    console.error('Error submitting quiz attempt:', error);
-    res.status(500).json({ message: 'Failed to submit quiz attempt', error: error.message });
-  }
 };

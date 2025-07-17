@@ -8,7 +8,7 @@ import {
   useUpdateLessonProgressMutation,
   useUpdateQuizProgressMutation
 } from "@/features/api/courseProgressApi";
-import { CheckCircle, CheckCircle2, CirclePlay, ChevronDown, ChevronUp, History, ArrowLeft } from "lucide-react";
+import { CheckCircle2, CirclePlay, ChevronDown, ChevronUp, History, ArrowLeft } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,11 +33,6 @@ const CourseProgress = () => {
   const [currentLecture, setCurrentLecture] = useState(null);
   const [currentLesson, setCurrentLesson] = useState(null);
   const [completedLessons, setCompletedLessons] = useState({});
-
-  useEffect(() => {
-    console.log("API Response:", data);
-    console.log("API Error:", error);
-  }, [data, error]);
 
   useEffect(() => {
     if (data?.data?.progress) {
@@ -69,7 +64,7 @@ const CourseProgress = () => {
     }
   }, [data, currentLesson]);
 
-  // Now, after all hooks, do your early returns:
+  // Early returns for loading/error/invalid data
   if (isLoading) return <PageLoader />;
   if (isError) {
     return (
@@ -107,8 +102,25 @@ const CourseProgress = () => {
   const { courseDetails, progress, completed } = data.data;
   const { courseTitle } = courseDetails;
 
-  // Calculate the progress percentage based on user-specific completion
-  const allLessons = courseDetails?.lectures?.flatMap(lecture => lecture.lessons) || [];
+  // Build a map of completed lessons from progress
+  const lessonProgressMap = {};
+  progress?.forEach(lectureProgress => {
+    lectureProgress.lessonProgress?.forEach(lp => {
+      if (lp.completed) lessonProgressMap[lp.lessonId] = true;
+    });
+  });
+
+  // Define lecturesWithCompletion FIRST
+  const lecturesWithCompletion = courseDetails.lectures.map(lecture => ({
+    ...lecture,
+    lessons: lecture.lessons.map(lesson => ({
+      ...lesson,
+      isCompleted: lessonProgressMap[lesson._id] || false
+    }))
+  }));
+
+  // NOW calculate progress using lecturesWithCompletion
+  const allLessons = lecturesWithCompletion?.flatMap(lecture => lecture.lessons || []) || [];
   const totalLessons = allLessons.length;
   const completedLessonsCount = allLessons.filter(lesson => lesson.isCompleted).length;
 
@@ -116,17 +128,16 @@ const CourseProgress = () => {
     ? Math.round((completedLessonsCount / totalLessons) * 100)
     : 0;
 
+  // Defensive: check all lessons in lecture for completion
   const isLectureCompleted = (lectureId) => {
-    const lecture = courseDetails?.lectures?.find(l => l._id === lectureId);
-    return lecture?.lessons?.every(lesson => lesson.isCompleted) || false;
+    const lecture = lecturesWithCompletion.find(l => l._id === lectureId);
+    return lecture?.lessons?.length > 0 && lecture.lessons.every(lesson => lesson.isCompleted);
   };
-
 
   const toggleLecture = (lectureId) => {
     setExpandedLecture(expandedLecture === lectureId ? null : lectureId);
   };
 
-  // When a lesson is clicked:
   const handleLessonClick = (lectureId, lessonId) => {
     const lecture = courseDetails.lectures.find(l => l._id === lectureId);
     const lesson = lecture?.lessons.find(l => l._id === lessonId);
@@ -138,13 +149,13 @@ const CourseProgress = () => {
     <>
       {/* Progress History Sheet Trigger */}
       <Sheet>
-      <SheetTrigger asChild>
-  <button
-    className=" fixed top-1/3 left-0 z-50 bg-blue-600 text-white h-12 w-12 flex items-center p-0 rounded-r-lg shadow-lg focus:outline-none"
-  >
-    <History size={24} />
-  </button>
-</SheetTrigger>
+        <SheetTrigger asChild>
+          <button
+            className="fixed top-1/3 left-0 z-50 bg-blue-600 text-white h-12 w-12 flex items-center p-0 rounded-r-lg shadow-lg focus:outline-none"
+          >
+            <History size={24} />
+          </button>
+        </SheetTrigger>
         <SheetContent side="left" className="max-w-lg w-full">
           <ProgressHistory courseTitle={courseDetails.courseTitle} />
         </SheetContent>
@@ -155,18 +166,16 @@ const CourseProgress = () => {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate(`/course-detail/${courseId}`)}
-            className="flex items-center justify-center rounded-lg border border-[#23232a] bg-transparent text-white hover:bg-[#23232a]/80 transition h-10 "
-            type="button"
-            title="Back to Course Details"
+            className="flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#23232a] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-white">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
               {courseTitle}
             </h1>
             {/* Subtitle row for current lesson */}
-            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <rect x="3" y="7" width="18" height="13" rx="2" />
                 <path d="M16 3v4M8 3v4" />
@@ -178,7 +187,7 @@ const CourseProgress = () => {
             <Badge className="bg-green-500 text-white">Course Completed</Badge>
           )}
         </div>
-        <h2 className="font-semibold text-xl mb-4">Course Lectures</h2>
+        <h2 className="font-semibold text-xl mb-4 text-gray-900 dark:text-white">Course Lectures</h2>
         
         {/* Progress Bar Section */}
         <div className="mb-6 flex items-center gap-4">
@@ -186,14 +195,18 @@ const CourseProgress = () => {
             Progress:
           </span>
           <div className="flex-1">
-            <Progress value={progressPercent} className="h-3" />
+            <Progress
+              value={progressPercent}
+              className="h-3 bg-gray-200 dark:bg-gray-700"
+              barClassName="bg-blue-600 dark:bg-blue-500"
+            />
           </div>
           <span className="font-medium text-gray-700 dark:text-gray-300">{progressPercent}%</span>
         </div>
         {/* End Progress Bar Section */}
 
         <div className="flex-1 overflow-y-auto">
-          {courseDetails?.lectures?.map((lecture) => (
+          {lecturesWithCompletion?.map((lecture) => (
             <div
               key={lecture._id}
               className={`mb-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition

@@ -16,10 +16,12 @@ function Progress({
         className
       )}
       {...props}>
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="bg-black h-full w-full flex-1 transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
+      <div className="w-full bg-blue-100 dark:bg-blue-900 rounded-full h-3">
+        <div
+          className="h-3 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-500"
+          style={{ width: `${value}%` }}
+        />
+      </div>
     </ProgressPrimitive.Root>
   );
 }

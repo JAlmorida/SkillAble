@@ -9,9 +9,13 @@ const statusColor = (status) =>
 
 const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
   const { courseId } = useParams();
-  const { data, isLoading, error } = useGetCourseProgressHistoryQuery(courseId);
+  const { data, isLoading, error, refetch } = useGetCourseProgressHistoryQuery(courseId);
 
-  // Try to get lectures and course title from the response
+  // Refetch progress when this page loads
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
   const progressData = data?.lectures || data || [];
   const courseTitle =
     propCourseTitle ||
@@ -28,10 +32,8 @@ const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
     if (progressData && progressData.length > 0 && !openLecture) {
       setOpenLecture(progressData[0].lectureId);
     }
-    // eslint-disable-next-line
   }, [progressData]);
 
-  // Compute total course score and total possible
   let totalCourseScore = 0;
   let totalCoursePossible = 0;
 
@@ -69,7 +71,6 @@ const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
           const isOpen = openLecture === lecture.lectureId;
           return (
             <div key={lecture.lectureId} className="mb-2 border-b border-slate-700">
-              {/* Accordion Header */}
               <button
                 className="w-full flex items-center justify-between px-2 py-2 bg-slate-800 hover:bg-slate-700 rounded transition"
                 onClick={() => setOpenLecture(isOpen ? null : lecture.lectureId)}
@@ -78,7 +79,6 @@ const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
                 <span className="font-semibold text-left text-sm truncate">{lecture.lectureTitle}</span>
                 {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
-              {/* Accordion Content */}
               {isOpen && (
                 <div className="py-2 px-1">
                   <table className="w-full text-xs">
@@ -105,7 +105,6 @@ const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
                           </tr>
                         )
                       ))}
-                      {/* Per-lecture total row */}
                       <tr>
                         <td colSpan={2} className="font-bold text-right bg-slate-100 dark:bg-slate-800 py-1 pr-2">
                           Total Quiz Grading:
@@ -121,7 +120,6 @@ const ProgressHistory = ({ courseTitle: propCourseTitle }) => {
             </div>
           );
         })}
-        {/* Total course grading row */}
         <div className="mt-4">
           <div className="flex justify-between items-center font-bold bg-slate-200 dark:bg-slate-900 px-2 py-2 rounded">
             <span>Total Course Grade:</span>

@@ -30,10 +30,18 @@ const PORT = process.env.PORT || 8080;
 app.use(express.json());
 app.use(cookieParser());
 
+// Updated CORS configuration - includes both dev and preview ports
 app.use(cors({
-  origin:"http://localhost:5173",
-  credentials:true
+  origin: [
+    "http://localhost:5173",  // Dev server
+    "http://localhost:4173",  // Preview server
+    "http://localhost:3000",  // Alternative dev port
+    "http://127.0.0.1:5173",  // Alternative localhost
+    "http://127.0.0.1:4173",  // Alternative localhost
+  ],
+  credentials: true
 }));
+
 //api's
 app.use("/api/auth", authRoute);
 app.use("/api/v1/user", userRoute);

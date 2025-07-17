@@ -9,7 +9,7 @@ import { useLoadUserQuery } from "./features/api/userApi";
 import LoadingSpinner from "./components/loadingUi/LoadingSpinner";
 import { QueryClient, QueryClientProvider,} from '@tanstack/react-query'
 import "stream-chat-react/dist/css/v2/index.css";
-
+import "./pwa.js"
 
 const Custom = ({ children }) => {
   const { isLoading } = useLoadUserQuery();

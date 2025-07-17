@@ -75,7 +75,7 @@ export const courseApi = createApi({
       }),
     }),
     searchCourses: builder.query({
-      query: (query) => `/search?query=${encodeURIComponent(query)}`,
+      query: ({ searchQuery }) => `/search?query=${searchQuery}`,
     }),
   }),
 });

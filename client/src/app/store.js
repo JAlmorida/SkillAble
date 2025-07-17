@@ -49,7 +49,7 @@ export const appStore = configureStore({
       quizApi.middleware,
       questionApi.middleware, 
       captionApi.middleware,
-      categoryApi.middleware
+      categoryApi.middleware,
     ),
 });
 

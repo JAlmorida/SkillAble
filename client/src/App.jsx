@@ -51,6 +51,7 @@ import { ChatProvider } from "./components/context/ChatProvider.jsx";
 import { EnrollmentNotificationProvider } from "@/components/context/EnrollmentNotificationProvider";
 import FloatingZoomPanel from "./components/controls/FloatingZoomPanel.jsx";
 import { useZoom } from "./components/context/ZoomProvider";
+import ResetPassword from "./pages/auth/ResetPasswordPage.jsx";import { Toaster } from "react-hot-toast"; // Add this import
 
 const appRouter = createBrowserRouter([
   {
@@ -82,6 +83,14 @@ const appRouter = createBrowserRouter([
           </AuthenticatedUser>
         ),
       },
+      {
+        path:"reset-password/:token", 
+        element:(
+          <AuthenticatedUser>
+            <ResetPassword/>
+          </AuthenticatedUser>
+        )
+      }, 
       {
         path: "onboarding",
         element: (
@@ -231,7 +240,7 @@ const appRouter = createBrowserRouter([
         path: "admin",
         element: (
           <AdminRoute>
-            <Outlet />x
+            <Outlet />
           </AdminRoute>
         ),
         children: [
@@ -312,6 +321,45 @@ function App() {
                       <ZoomWrapper>
                         <ZoomPanelWithContext />
                         <RouterProvider router={appRouter} />
+                        
+                        {/* Global Toast Container - Add this! */}
+                        <Toaster
+                          position="top-right"
+                          reverseOrder={false}
+                          gutter={8}
+                          toastOptions={{
+                            duration: 4000,
+                            style: {
+                              background: 'var(--toast-bg, #363636)',
+                              color: 'var(--toast-text, #fff)',
+                              fontSize: '14px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--toast-border, transparent)',
+                              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                              maxWidth: '400px',
+                            },
+                            success: {
+                              duration: 3000,
+                              iconTheme: {
+                                primary: '#10b981',
+                                secondary: '#fff',
+                              },
+                            },
+                            error: {
+                              duration: 4000,
+                              iconTheme: {
+                                primary: '#ef4444',
+                                secondary: '#fff',
+                              },
+                            },
+                            loading: {
+                              iconTheme: {
+                                primary: '#3b82f6',
+                                secondary: '#fff',
+                              },
+                            },
+                          }}
+                        />
                       </ZoomWrapper>
                     </CaptionProvider>
                   </ThemeProvider>

@@ -5,9 +5,6 @@ import dotenv from 'dotenv'
 dotenv.config({})
 
 const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
-
-console.log('API KEY:', process.env.ASSEMBLYAI_API_KEY, process.env.ASSEMBLYAI_API_KEY.length);
-
 export const uploadToAssemblyAI = async (filePath) => {
     const response = await axios({
         method: 'post', 

@@ -76,147 +76,162 @@ const Register = () => {
     }
   }, [registerIsSuccess, registerData, registerError]);
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   return (
-    <div className="flex items-center justify-center overflow-hidden h-screen">
-      <div className="border border-primary/25 flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-base-100 rounded-xl shadow-lg overflow-hidden">
-        {/* SIGNUP FORM - LEFT SIDE */}
-        <div className="w-full lg:w-1/2 p-4 sm:p-8 flex flex-col">
-          {/* LOGO */}
-          <div className="mb-4 flex items-center justify-start gap-2">
-            <School className="size-9 text-primary" />
-            <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-wider">
+    <div className="relative h-screen w-screen flex flex-col-reverse lg:flex-row overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] md:w-[400px] md:h-[400px] bg-blue-400 opacity-30 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] md:w-[400px] md:h-[400px] bg-purple-400 opacity-20 rounded-full blur-3xl animate-pulse-slower" />
+        <div className="absolute top-1/2 left-1/2 w-[120px] h-[120px] md:w-[200px] md:h-[200px] bg-pink-400 opacity-10 rounded-full blur-2xl animate-pulse" style={{ transform: "translate(-50%, -50%)" }} />
+      </div>
+      {/* Register Form */}
+      <div className="flex flex-1 flex-col justify-center items-center px-4 py-8 sm:py-12 md:px-8">
+        <div className="w-full max-w-xs sm:max-w-sm md:max-w-md bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
+          <div className="mb-4 flex items-center gap-2 justify-center">
+            <School className="size-8 text-primary animate-bounce-slow" />
+            <span className="text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 tracking-wider animate-gradient-x">
               SkillAble
             </span>
           </div>
-
-          {/* ERROR MESSAGE IF ANY */}
-          {registerError && (
-            <div className="alert alert-error mb-4">
-              <span>
-                {registerError.data?.message || registerError.message}
-              </span>
+          <form onSubmit={handleRegistration} className="space-y-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 animate-fade-in">
+                Create an Account
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
+                Join SkillAble and start your learning adventure!
+              </p>
             </div>
-          )}
-
-          <div className="w-full">
-            <form onSubmit={handleRegistration}>
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold">Create an Account</h2>
-                  <p className="text-sm opacity-70">
-                    Join SkillAble and start your learning adventure!
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {/* NAME */}
-                  <div className="form-control w-full">
-                    <label className="label">
-                      <span className="label-text">Name</span>
-                    </label>
-                    <Input
-                      type="text"
-                      name="name"
-                      placeholder="Your name here"
-                      className="input input-bordered w-full"
-                      value={signupInput.name}
-                      onChange={changeInputHandler}
-                      required
-                    />
-                  </div>
-                  {/* EMAIL */}
-                  <div className="form-control w-full">
-                    <label className="label">
-                      <span className="label-text">Email</span>
-                    </label>
-                    <Input
-                      type="email"
-                      name="email"
-                      placeholder="Example@gmail.com"
-                      className="input input-bordered w-full"
-                      value={signupInput.email}
-                      onChange={changeInputHandler}
-                      required
-                    />
-                  </div>
-                  {/* PASSWORD */}
-                  <div className="form-control w-full">
-                    <span className="label-text">Password</span>
-                    <Input
-                      type="password"
-                      name="password"
-                      placeholder="********"
-                      className="input input-bordered w-full"
-                      value={signupInput.password}
-                      onChange={changeInputHandler}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Checkbox required />
-                    <span className="text-xs leading-tight mt-2 ml-2">
-                      I agree to the{" "}
-                      <span className="text-primary hover:underline">
-                        terms of service
-                      </span>{" "}
-                      and{" "}
-                      <span className="text-primary hover:underline">
-                        privacy policy
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full"
-                  type="submit"
-                  disabled={registerIsLoading}
-                >
-                  {registerIsLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Create Account"
-                  )}
-                </Button>
-
-                <div className="text-center mt-4">
-                  <p className="text-sm">
-                    Already have an account?{" "}
-                    <Link to="/login" className="text-primary hover:underline">
-                      Sign in
-                    </Link>
-                  </p>
-                </div>
+            {registerError && (
+              <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded px-3 py-2 mb-2 text-sm">
+                {registerError.data?.message || registerError.message || "Signup Failed"}
               </div>
-            </form>
-          </div>
-        </div>
-
-        {/* SIGNUP FORM - RIGHT SIDE */}
-        <div className="hidden lg:flex w-full lg:w-1/2 bg-primary/10 items-center justify-center">
-          <div className="max-w-md p-8">
-            {/* Illustration */}
-            <div className="relative aspect-square max-w-sm mx-auto">
-              <img
-                src="/i.png"
-                alt="Language connection illustration"
-                className="w-full h-full"
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Name</label>
+              <Input
+                type="text"
+                name="name"
+                placeholder="Your name here"
+                className="w-full"
+                value={signupInput.name}
+                onChange={changeInputHandler}
+                required
               />
             </div>
-
-            <div className="text-center space-y-3 mt-6">
-              <h2 className="text-xl font-semibold">
-                Connect with learning partners
-              </h2>
-              <p className="opacity-70">Make friends, and improve together</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
+              <Input
+                type="email"
+                name="email"
+                placeholder="Example@gmail.com"
+                className="w-full"
+                value={signupInput.email}
+                onChange={changeInputHandler}
+                required
+              />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
+              <Input
+                type="password"
+                name="password"
+                placeholder="********"
+                className="w-full"
+                value={signupInput.password}
+                onChange={changeInputHandler}
+                required
+              />
+            </div>
+            <div className="flex items-center mt-2">
+              <input
+                type="checkbox"
+                id="terms"
+                required
+                className="accent-primary w-4 h-4 rounded border-gray-300 focus:ring-2 focus:ring-primary focus:outline-none transition-all duration-150"
+              />
+              <label htmlFor="terms" className="text-xs leading-tight ml-2 select-none">
+                I agree to the{" "}
+                <span className="text-primary hover:underline cursor-pointer">
+                  terms of service
+                </span>{" "}
+                and{" "}
+                <span className="text-primary hover:underline cursor-pointer">
+                  privacy policy
+                </span>
+              </label>
+            </div>
+            <Button
+              className="w-full transition-transform duration-200 hover:scale-105 hover:shadow-lg"
+              type="submit"
+              disabled={registerIsLoading}
+            >
+              {registerIsLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+            <div className="text-center mt-2">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  className="text-primary hover:underline font-semibold"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+      {/* Illustration */}
+      <div className="flex flex-1 items-center justify-center py-8 lg:py-0">
+        <div className="max-w-xs sm:max-w-sm md:max-w-md p-4 animate-float w-full">
+          <div className="relative aspect-square max-w-xs sm:max-w-sm md:max-w-md mx-auto">
+            <img
+              src="/i.png"
+              alt="Language connection illustration"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="text-center space-y-2 mt-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+              Connect with learning partners
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+              Make friends, and improve together
+            </p>
           </div>
         </div>
       </div>
+      {/* Animations */}
+      <style>
+        {`
+          @keyframes pulse-slow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.5; } }
+          @keyframes pulse-slower { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.4; } }
+          @keyframes fade-in { from { opacity: 0; transform: translateY(20px);} to { opacity: 1; transform: none; } }
+          @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+          @keyframes gradient-x { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+          .animate-pulse-slow { animation: pulse-slow 6s infinite; }
+          .animate-pulse-slower { animation: pulse-slower 10s infinite; }
+          .animate-fade-in { animation: fade-in 1s ease; }
+          .animate-float { animation: float 3s ease-in-out infinite; }
+          .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 4s ease-in-out infinite; }
+          .animate-bounce-slow { animation: bounce 2s infinite; }
+        `}
+      </style>
     </div>
   );
 };

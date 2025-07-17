@@ -4,6 +4,8 @@ import {
   login,
   logout,
   onboard,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/auth.controller.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 
@@ -14,6 +16,9 @@ router.route("/login").post(login);
 router.route("/logout").post(logout);
 
 router.route("/onboarding").post(isAuthenticated, onboard);
+
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
 router.route("/me").get(isAuthenticated, (req, res) => {
   res.status(200).json({ success: true, user: req.user });

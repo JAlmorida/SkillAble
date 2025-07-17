@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trash } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import Input from '@/components/ui/input';
 import RichTextEditor from '@/components/ui/RichTextEditor';
@@ -110,7 +110,7 @@ const EditLesson = () => {
       formData.append("file", file);
       setMediaProgress(true);
       try {
-        const res = await axios.post(`${MEDIA_API}/upload-video`, formData, {
+        const res = await axios.post(`http://localhost:8080/api/v1/media/upload-video`, formData, {
           onUploadProgress: ({ loaded, total }) => {
             setUploadProgress(Math.round((loaded * 100) / total));
           }
@@ -146,7 +146,7 @@ const EditLesson = () => {
       formData.append("file", file);
       setMediaProgress(true);
       try {
-        const res = await axios.post(`${MEDIA_API}/upload-resource`, formData, {
+        const res = await axios.post(`http://localhost:8080/api/v1/media/upload-resource`, formData, {
           onUploadProgress: ({ loaded, total }) => {
             setUploadProgress(Math.round((loaded * 100) / total));
           }
@@ -188,12 +188,12 @@ const EditLesson = () => {
   };
 
   return (
-    <div className="w-full py-8 px-2">
+    <div className="w-full py-8 px-2 bg-white dark:bg-[#111112] min-h-screen">
       <div className="flex items-center mb-6 gap-2">
         <Link to={`/admin/course/${courseId}/lecture/${lectureId}`}>
           <button
             type="button"
-            className="flex items-center gap-2 bg-transparent text-blue-600 font-semibold rounded-none border-none shadow-none px-0 py-0 focus:outline-none"
+            className="flex items-center gap-2 bg-transparent text-blue-600 dark:text-blue-400 font-semibold rounded-none border-none shadow-none px-0 py-0 focus:outline-none"
             title="Back to Lectures"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -203,31 +203,32 @@ const EditLesson = () => {
       </div>
 
       <div className="flex items-center mb-6 gap-2 ml-2">
-      <h1 className="font-bold text-2xl">Edit Lesson</h1>
+        <h1 className="font-bold text-2xl text-gray-900 dark:text-white">Edit Lesson</h1>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8 min-h-[500px] items-stretch">
         {/* Left Section */}
         <div className="w-full md:w-1/3 space-y-6 h-full flex flex-col">
           {/* Card 1: Inputs */}
-          <div className="bg-background border border-border rounded-xl shadow p-6 space-y-2">
+          <div className="bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 rounded-xl shadow p-6 space-y-2">
             <div>
-            <h1 className="font-semibold text-sm mb-2">Title</h1>
+              <h1 className="font-semibold text-sm mb-2 text-gray-900 dark:text-white">Title</h1>
             <Input
                 value={input.title}
                 onChange={(e) => setInput({ ...input, title: e.target.value })}
                 type="text"
                 name="title"
                 placeholder="Your lesson title here"
+                className="bg-white dark:bg-[#23232a] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
               />
             </div>
-            <h1 className="font-semibold text-sm">Upload Resource (PDF/Word)</h1>
+            <h1 className="font-semibold text-sm text-gray-900 dark:text-white">Upload Resource (PDF/Word)</h1>
             <DashedUploadInput
               type="file"
               accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
               onChange={handleResourceUpload}
             />
-            <h1 className="font-semibold text-sm">Your lesson video here</h1>
+            <h1 className="font-semibold text-sm text-gray-900 dark:text-white">Your lesson video here</h1>
             <DashedUploadInput
               type="file"
               accept="video/*"
@@ -236,17 +237,17 @@ const EditLesson = () => {
             {mediaProgress && (
               <div>
                 <Progress value={uploadProgress} />
-                <p>{uploadProgress}% uploaded</p>
+                <p className="text-gray-900 dark:text-white">{uploadProgress}% uploaded</p>
               </div>
             )}
           </div>
 
           {/* Card 2: Resource Files and Video */}
-          <div className="bg-background border border-border rounded-xl shadow p-6 space-y-5">
+          <div className="bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 rounded-xl shadow p-6 space-y-5">
             {/* Resource Files Output Section */}
             {resourceFiles.length > 0 && (
               <div>
-                <Label className="mb-2 font-semibold text-1xl">Resources</Label>
+                <Label className="mb-2 font-semibold text-1xl text-gray-900 dark:text-white">Resources</Label>
                 <div className="space-y-2">
                   {resourceFiles.map((file, idx) => (
                     <FileCard
@@ -261,20 +262,18 @@ const EditLesson = () => {
             {/* Video Output Section */}
             {videoUrl && (
               <div>
-                <Label className="mb-2 font-bold text-s">Lesson Video</Label>
+                <Label className="mb-2 font-bold text-s text-gray-900 dark:text-white">Lesson Video</Label>
                 <video src={videoUrl} controls className="w-full rounded" />
               </div>
             )}
           </div>
         </div>
         {/* Right Section */}
-        <div className="w-full md:w-2/3 bg-background border border-border rounded-xl shadow p-6 flex flex-col h-full ">
-          
+        <div className="w-full md:w-2/3 bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-gray-700 rounded-xl shadow p-6 flex flex-col h-full ">
           {/* BUTTONS ON TOP */}
           <div className='flex justify-between '>
-          <Label className="mb-2 text-2xl font-bold">Description</Label>
+            <Label className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Description</Label>
           </div>
-
           {/* RICH TEXT EDITOR */}
           <div className="flex-1 min-h-[300px] mb-4 ">
             <RichTextEditor
@@ -284,14 +283,12 @@ const EditLesson = () => {
               }
             />
           </div>
-
           {/* Always-visible Quiz Section at the bottom */}
         </div>
       </div>
       <div className="w-full mt-8">
         <CreateQuiz />
       </div>
-
 
       {/* Fixed action buttons at the bottom right */}
       <div className="fixed bottom-7 right-7 z-40 flex gap-2">

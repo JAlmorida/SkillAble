@@ -25,7 +25,8 @@ const LessonQuiz = ({ lessonId, courseId, lectureProgress }) => { // Accept less
                         key={quiz._id} 
                         quizId={quiz._id} 
                         courseId={courseId} 
-                        lectureProgress={lectureProgress} 
+                        lectureProgress={lectureProgress}
+                        lessonId={lessonId} // <-- pass lessonId here!
                     />
                 ) : null
             )}

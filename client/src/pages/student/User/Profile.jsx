@@ -242,9 +242,25 @@ function CourseProgressWithFetch({ course }) {
   const { data, isLoading } = useGetCourseProgressQuery(course._id);
 
   let percent = 0;
-  if (data?.data?.courseDetails?.lectures) {
-    const lectures = data.data.courseDetails.lectures;
-    const allLessons = lectures.flatMap(lec => lec.lessons);
+  if (data?.data?.courseDetails?.lectures && data?.data?.progress) {
+    // Build a map of completed lessons from progress
+    const lessonProgressMap = {};
+    data.data.progress.forEach(lectureProgress => {
+      lectureProgress.lessonProgress?.forEach(lp => {
+        if (lp.completed) lessonProgressMap[lp.lessonId] = true;
+      });
+    });
+
+    // Map isCompleted onto each lesson
+    const lecturesWithCompletion = data.data.courseDetails.lectures.map(lecture => ({
+      ...lecture,
+      lessons: lecture.lessons.map(lesson => ({
+        ...lesson,
+        isCompleted: lessonProgressMap[lesson._id] || false
+      }))
+    }));
+
+    const allLessons = lecturesWithCompletion.flatMap(lec => lec.lessons);
     const total = allLessons.length;
     const completed = allLessons.filter(lesson => lesson.isCompleted).length;
     percent = total > 0 ? Math.round((completed / total) * 100) : 0;

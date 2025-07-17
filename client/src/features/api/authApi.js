@@ -1,8 +1,6 @@
-// filepath: c:\Users\user\skillable\client\skillable\src\features\api\authApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { userLoggedIn, userLoggedOut } from "../authSlice";
 
-// Corrected base URL to match server routing
 const AUTH_API = "http://localhost:8080/api/auth/";
 
 export const authApi = createApi({
@@ -62,6 +60,20 @@ export const authApi = createApi({
         body: userData,
       }),
     }),
+    forgotPassword: builder.mutation({
+      query: (email) => ({
+        url: "forgot-password",
+        method: "POST",
+        body: { email },
+      }),
+    }),
+    resetPassword: builder.mutation({
+      query: ({ token, password }) => ({
+        url: `reset-password/${token}`,
+        method: "POST",
+        body: { password },
+      }),
+    }),
   }),
 });
 
@@ -71,4 +83,6 @@ export const {
   useLoginUserMutation,
   useLogoutUserMutation,
   useCompleteOnBoardingMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;

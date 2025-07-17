@@ -1,22 +1,40 @@
 import { Edit } from 'lucide-react';
 import React from 'react';
-import { useNavigate  } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const Quiz = ({ quiz, courseId, lectureId, lessonId }) => {
+const Quiz = ({ quiz, courseId, lectureId, lessonId, index }) => {
   const navigate = useNavigate();
   const goToEditQuiz = () => {
     navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quiz._id}`);
   };
+  
   return (
-    <div className="flex items-center justify-between bg-[#F7F9FA] dark:bg-[#1F1F1F] px-4 py-2 rounded-md my-2">
-      <h1 className="font-bold text-gray-800 dark:text-gray-100">
-        Quiz: {quiz.quizTitle}
-      </h1>
-      <Edit
-        size={20}
-        className="cursor-pointer text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-        onClick={goToEditQuiz}
-      />
+    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors">
+      {/* Quiz number indicator */}
+      <div className="w-8 h-8 flex-shrink-0 rounded-full bg-purple-600 dark:bg-purple-500 text-white flex items-center justify-center font-semibold text-sm">
+        Q{index ? index + 1 : 1}
+      </div>
+      
+      {/* Quiz info */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-base text-gray-900 dark:text-gray-100 truncate">
+          {quiz.quizTitle}
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Quiz {index ? index + 1 : 1}
+        </p>
+      </div>
+
+      {/* Edit button */}
+      <div className="flex gap-2">
+        <button
+          onClick={goToEditQuiz}
+          className="p-2 rounded-full bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          title="Edit quiz"
+        >
+          <Edit className="w-4 h-4 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400" />
+        </button>
+      </div>
     </div>
   );
 };

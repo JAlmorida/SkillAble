@@ -12,61 +12,67 @@ export const getCourseProgress = async (req, res) => {
     const { courseId } = req.params;
     const userId = req.id;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-
     const course = await Course.findById(courseId).populate({
       path: 'lectures',
       populate: { path: 'lessons' }
     });
-    
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
+    const actualLectureIds = course.lectures.map(l => l._id.toString());
 
+    // Find the user's course progress
     const courseProgress = await CourseProgress.findOne({ courseId, userId });
-    
-    // Convert the Mongoose documents to plain JavaScript objects.
-    // This correctly turns all database IDs into simple strings.
-    const courseDetailsForUser = course.toObject();
-    const progressData = courseProgress 
-      ? courseProgress.toObject() 
-      : { completed: false, progress: [] };
 
-    // Add the user-specific completion status to each lesson.
-    const completedLessonsMap = new Map();
-    if (progressData.lectureProgress) {
-      progressData.lectureProgress.forEach(lecProg => {
-        lecProg.lessonProgress.forEach(lesProg => {
-          if (lesProg.completed) {
-            completedLessonsMap.set(lesProg.lessonId.toString(), true);
-          }
-        });
+    // Defensive: if no progress, return a safe default response
+    if (!courseProgress) {
+      const courseDetailsForUser = course.toObject();
+      return res.status(200).json({
+        data: {
+          userId,
+          courseId,
+          courseDetails: courseDetailsForUser,
+          completed: false,
+          progress: [],
+        }
       });
     }
 
-    courseDetailsForUser.lectures.forEach(lecture => {
-      lecture.lessons.forEach(lesson => {
-        lesson.isCompleted = completedLessonsMap.has(lesson._id.toString());
-      });
-    });
+    // Filter lectureProgress to only include actual lectures
+    let filteredLectureProgress = [];
+    if (courseProgress.lectureProgress) {
+      filteredLectureProgress = courseProgress.lectureProgress.filter(lp =>
+        lp.lectureId && actualLectureIds.includes(lp.lectureId.toString())
+      );
+    }
+
+    // Check if all visible lectures are completed
+    const allLecturesCompleted =
+      filteredLectureProgress.length === actualLectureIds.length &&
+      filteredLectureProgress.length > 0 &&
+      filteredLectureProgress.every(lp => lp.completed);
+
+    // Set course completion status
+    courseProgress.completed = allLecturesCompleted;
+    if (allLecturesCompleted && !courseProgress.completedAt) {
+      courseProgress.completedAt = new Date();
+    }
+    await courseProgress.save();
+
+    const courseDetailsForUser = course.toObject();
 
     return res.status(200).json({
       data: {
         userId,
         courseId,
         courseDetails: courseDetailsForUser,
-        completed: progressData.completed,
-        progress: progressData.lectureProgress || [],
+        completed: allLecturesCompleted,
+        progress: filteredLectureProgress,
       }
     });
   } catch (error) {
     console.error("Error in getCourseProgress:", error);
-    return res.status(500).json({ 
-      message: "Failed to get course progress", 
-      error: error.message 
-    });
+    return res.status(500).json({ message: "Failed to get course progress", error: error.message });
   }
 };
 export const updateCourseProgress = async (req, res) => {
@@ -257,7 +263,13 @@ export const updateQuizProgress = async (req, res) => {
 
     let courseProgress = await CourseProgress.findOne({ courseId, userId });
     if (!courseProgress) {
-      return res.status(404).json({ message: "Course progress not found" });
+      // Create a new CourseProgress document if it doesn't exist
+      courseProgress = new CourseProgress({
+        userId,
+        courseId,
+        completed: false,
+        lectureProgress: [],
+      });
     }
 
     // Find or create lectureProgress
@@ -276,7 +288,7 @@ export const updateQuizProgress = async (req, res) => {
 
     // Find or create quizProgress
     let quizProgress = lectureProgress.quizProgress.find(
-      (qp) => qp.quizId.toString() === quizId
+      (qp) => qp.quizId.toString() === quizId.toString()
     );
     if (!quizProgress) {
       quizProgress = {
@@ -292,13 +304,34 @@ export const updateQuizProgress = async (req, res) => {
       quizProgress.completedAt = new Date();
     }
 
-    // Check if all lessons and quizzes are completed for this lecture
+    // 1. Get the lessonId for this quiz
+    const quizDoc = await Quiz.findById(quizId);
+    const lessonId = quizDoc.lesson?.toString();
+    if (lessonId) {
+      // 2. Find or create lessonProgress for this lesson
+      let lessonProgress = lectureProgress.lessonProgress.find(
+        (lp) => lp.lessonId.toString() === lessonId
+      );
+      if (!lessonProgress) {
+        lessonProgress = {
+          lessonId,
+          completed: true,
+          completedAt: new Date()
+        };
+        lectureProgress.lessonProgress.push(lessonProgress);
+      } else {
+        lessonProgress.completed = true;
+        lessonProgress.completedAt = new Date();
+      }
+    }
+
+    // 3. Check if all lessons and quizzes are completed for this lecture
     const totalLessons = lectureProgress.lessonProgress.length; // or fetch from DB
     const totalQuizzes = lectureProgress.quizProgress.length;   // or fetch from DB
 
     lectureProgress.completed = isLectureCompleted(lectureProgress, totalLessons, totalQuizzes);
 
-    // Check if all lectures are completed for the course
+    // 4. Check if all lectures are completed for the course
     courseProgress.completed = courseProgress.lectureProgress.every(lp => lp.completed);
 
     await courseProgress.save();

@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import Lecture from "./Lecture";
 import PageLoader from "@/components/loadingUi/PageLoader";
 import Input from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
 
 const CreateLecture = () => {
   const [lectureTitle, setLectureTitle] = useState("");
@@ -42,53 +41,52 @@ const CreateLecture = () => {
     if (error) {
       toast.error(error.data.message);
     }
-  }, [isSuccess, error]);
+  }, [isSuccess, error, data, refetch]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center py-8 px-2 bg-[#111112]">
-      <div className="w-full mb-6">
+    <div className="w-full min-h-screen flex flex-col items-center py-4 sm:py-8 px-2 sm:px-6 bg-white dark:bg-[#111112]">
+      <div className="w-full mx-auto mb-4 sm:mb-6">
         <button
           variant="outline"
           type="button"
           onClick={() => navigate(`/admin/course/${courseId}`)}
-          className="flex items-center gap-2 rounded-full bg-transparent text-blue-600 font-semibold focus:outline-none active:bg-transparent"
+          className="flex items-center gap-2 rounded-full bg-transparent text-blue-600 dark:text-blue-400 font-semibold focus:outline-none active:bg-transparent text-sm sm:text-base"
           title="Back to Course Table"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
           <span className="font-semibold">Back to course</span>
         </button>
       </div>
-      <div className="w-full bg-[#18181b] rounded-xl shadow-lg p-6 space-y-8">
-        <div className="mb-6">
-        </div>
+      <div className="w-full mx-auto bg-gray-100 dark:bg-[#18181b] rounded-xl shadow-lg p-4 sm:p-6 space-y-6 sm:space-y-8">
         <div>
-          <h1 className="font-bold text-2xl text-gray-100 mb-1">Add Lectures</h1>
-          <p className="text-gray-400 text-sm mb-4">
+          <h1 className="font-bold text-xl sm:text-2xl text-gray-900 dark:text-gray-100 mb-1">Add Lectures</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
             Add a lecture to your course. Enter a title and click "Create lecture".
           </p>
         </div>
         <form
-          className="flex flex-col sm:flex-row gap-4 items-end"
+          className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end"
           onSubmit={e => {
             e.preventDefault();
             createLectureHandler();
           }}
         >
           <div className="flex-1 space-y-2">
-            <Label>Title</Label>
+            <Label className="text-gray-900 dark:text-gray-100 text-sm">Title</Label>
             <Input
               value={lectureTitle}
               onChange={(e) => setLectureTitle(e.target.value)}
               type="text"
               name="courseTitle"
               placeholder="Please enter your lecture title here"
+              className="bg-white dark:bg-[#23232a] border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm"
             />
           </div>
           <div className="flex gap-2">
             <Button
               type="submit"
               disabled={isLoading || !lectureTitle.trim()}
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto text-sm"
             >
               {isLoading ? (
                 <>
@@ -101,23 +99,23 @@ const CreateLecture = () => {
             </Button>
           </div>
         </form>
-        <div className="mt-8">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Lectures</h2>
-          <div className="space-y-2">
+        <div className="mt-6 sm:mt-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Lectures</h2>
+          <div className="w-full">
             {lectureLoading ? (
               <PageLoader />
             ) : lectureError ? (
-              <p className="text-red-500">Failed to load lectures</p>
+              <p className="text-red-500 text-sm">Failed to load lectures</p>
             ) : lectureData.lectures.length === 0 ? (
-              <p className="text-gray-400">No lectures available.</p>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">No lectures available.</p>
             ) : (
-              lectureData.lectures.map((lecture, index) => (
-                <Lecture
-                  key={lecture._id}
-                  lecture={lecture}
-                  index={index}
-                />
-              ))
+              <div className="space-y-3">
+                {lectureData.lectures.map((lecture, index) => (
+                  <div key={lecture._id} className="w-full">
+                    <Lecture lecture={lecture} index={index} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

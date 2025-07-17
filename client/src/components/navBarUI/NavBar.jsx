@@ -1,4 +1,4 @@
-import { BellIcon, MessageCircle, School, Settings, Search, ChevronDown, ChevronUp, LayoutDashboard, BookOpen, Users } from "lucide-react";
+import { BellIcon, MessageCircle, School, Settings, Search, ChevronDown, ChevronUp, LayoutDashboard, BookOpen, Users, Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLogoutUserMutation } from "@/features/api/authApi";
@@ -12,7 +12,6 @@ import {
   Sheet,
   SheetTrigger,
   SheetContent,
-  SheetHeader,
   SheetFooter,
   SheetClose,
 } from "../ui/sheet";
@@ -32,15 +31,18 @@ const Navbar = () => {
   // Move these hooks to the top, before any conditional returns
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
-  const { data: suggestions = [] } = useSearchCoursesQuery(searchQuery, {
-    skip: !searchQuery,
-  });
+  // PWA Install state
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(true); // Set to true for testing
+
+  // Use the correct API call and suggestions extraction:
+  const { data: searchData, isLoading } = useSearchCoursesQuery({ searchQuery });
+  const suggestions = searchData?.courses || [];
 
   const searchHandler = (e) => {
     e.preventDefault();
-    if (searchQuery.trim() !== "") {
-      navigate(`/course/search?query=${searchQuery}`);
-    }
+    // Always navigate, even if searchQuery is empty
+    navigate(`/course/search?query=${searchQuery}`);
     setSearchQuery("");
     setShowSuggestions(false);
   };
@@ -49,6 +51,54 @@ const Navbar = () => {
     navigate(`/course-detail/${course._id}`);
     setSearchQuery("");
     setShowSuggestions(false);
+  };
+
+  // PWA Install handlers
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    const handleAppInstalled = () => {
+      console.log('PWA was installed');
+      setShowInstallButton(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      // Fallback: try to install using other methods
+      console.log('No deferred prompt available, checking other install methods...');
+      
+      // Try to trigger manual install
+      if ('serviceWorker' in navigator) {
+        toast.info('To install this app, look for the install button in your browser\'s address bar or use the browser menu.');
+      }
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    if (outcome === 'accepted') {
+      toast.success('App installed successfully!');
+    }
+    
+    setDeferredPrompt(null);
+    setShowInstallButton(false);
   };
 
   useEffect(() => {
@@ -91,8 +141,8 @@ const Navbar = () => {
   const isAdminPage = location.pathname.startsWith("/admin");
 
   return (
-    <div className="h-20 dark:bg-[#020817] bg-white border-b dark:border-b-gray-800 border-b-gray-200 fixed top-0 left-0 right-0 duration-300 z-10">
-      {/* Desktop */}
+    <div className="h-20 dark:bg-[#020817] bg-white border-b dark:border-b-gray-800 border-b-gray-200 fixed top-0 left-0 right-0 w-full z-10">
+      {/* Desktop NavBar */}
       {!isMobile && (
         <div className="max-w-7xl mx-auto flex items-center h-full justify-between">
           {/* Left: Logo only */}
@@ -141,7 +191,7 @@ const Navbar = () => {
                   setShowSuggestions(true);
                 }}
                 type="text"
-                className="w-full pr-14 pl-4 py-2 rounded-full border border-blue-400 bg-white shadow-sm text-foreground dark:bg-zinc-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
+                className="w-full pr-14 pl-4 py-2 rounded-full border border-blue-400 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
                 placeholder="Search for courses"
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -154,10 +204,10 @@ const Navbar = () => {
                 <Search className="w-5 h-5" />
               </button>
               {showSuggestions && searchQuery && (
-                <ul className="absolute left-0 right-0 top-12 z-50 bg-zinc-900 border border-zinc-800 rounded-b-xl shadow-lg max-h-96 overflow-y-auto">
+                <ul className="absolute left-0 right-0 top-12 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-b-xl shadow-lg max-h-96 overflow-y-auto">
                   <li className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 tracking-widest select-none">SUGGESTIONS</li>
                   <li
-                    className="flex items-center gap-3 px-4 py-2 cursor-pointer bg-zinc-800 hover:bg-zinc-700 rounded-t-lg"
+                    className="flex items-center gap-3 px-4 py-2 cursor-pointer bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-t-lg"
                     onMouseDown={() => {
                       navigate(`/course/search?query=${searchQuery}`);
                       setSearchQuery("");
@@ -165,7 +215,7 @@ const Navbar = () => {
                     }}
                   >
                     <Search className="w-5 h-5 text-blue-400" />
-                    <span className="font-bold text-white text-base">{searchQuery}</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-base">{searchQuery}</span>
                   </li>
                   {suggestions.length > 0 && (
                     <li className="px-4 pt-4 pb-1 text-xs font-semibold text-gray-400 tracking-widest select-none">COURSES</li>
@@ -174,11 +224,11 @@ const Navbar = () => {
                     suggestions.map((course) => (
                       <li
                         key={course._id}
-                        className="flex items-center gap-3 px-4 py-2 cursor-pointer bg-zinc-900 hover:bg-zinc-800 rounded-lg mb-1"
+                        className="flex items-center gap-3 px-4 py-2 cursor-pointer bg-white dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg mb-1"
                         onMouseDown={() => handleSuggestionClick(course)}
                       >
                         <img src={course.courseThumbnail} alt={course.title || course.name || course.courseTitle} className="w-10 h-10 rounded object-cover border border-zinc-700" />
-                        <span className="font-bold text-white text-base truncate ml-2">
+                        <span className="font-bold text-gray-900 dark:text-white text-base truncate ml-2">
                           {course.title || course.name || course.courseTitle || "Untitled"}
                         </span>
                       </li>
@@ -190,7 +240,7 @@ const Navbar = () => {
               )}
             </form>
           </div>
-          {/* Right: Chat icon, then Avatar/Sheet */}
+          {/* Right: Chat + Avatar (removed PWA Install button) */}
           <div className="flex items-center gap-4">
             {/* Chat icon */}
             <Button
@@ -313,20 +363,36 @@ const Navbar = () => {
                     </div>
                   </div>
                   <SheetFooter className="mt-auto mb-4 px-6">
-                    <SheetClose asChild>
-                      <Button
-                        variant="destructive"
-                        className="w-full"
-                        onClick={async () => {
-                          await logoutUser();
-                          localStorage.clear();
-                          sessionStorage.clear();
-                          window.location.href = "/login";
-                        }}
-                      >
-                        Log out
-                      </Button>
-                    </SheetClose>
+                    <div className="flex flex-col gap-2 w-full">
+                      {/* Install App button - moved here */}
+                      {showInstallButton && (
+                        <SheetClose asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-950"
+                            onClick={handleInstallClick}
+                          >
+                            <Download className="w-4 h-4" />
+                            Install App
+                          </Button>
+                        </SheetClose>
+                      )}
+                      {/* Log out button */}
+                      <SheetClose asChild>
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={async () => {
+                            await logoutUser();
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            window.location.href = "/login";
+                          }}
+                        >
+                          Log out
+                        </Button>
+                      </SheetClose>
+                    </div>
                   </SheetFooter>
                 </SheetContent>
               </Sheet>
@@ -338,11 +404,9 @@ const Navbar = () => {
           </div>
         </div>
       )}
-      {/* Mobile device  */}
+      {/* Mobile NavBar */}
       {isMobile && (
-        <>
-          <MobileNavBar user={user} />
-        </>
+        <MobileNavBar user={user} />
       )}
     </div>
   );
