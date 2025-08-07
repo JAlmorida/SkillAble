@@ -14,17 +14,25 @@ if (!fs.existsSync(uploadsDir)) {
 
 router.route("/upload-video").post(upload.single("file"), async(req, res) => {
   try {
-    const result = await uploadMedia(req.file.path);
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded"
+      });
+    }
+    
+    const result = await uploadMedia(req.file);
     res.status(200).json({
-      success:true,
-      message:"File uploaded succesfully",
-      data:result
-    })
+      success: true,
+      message: "File uploaded successfully",
+      data: result
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      message:"Error uplading file"
-    })
+      success: false,
+      message: "Error uploading file"
+    });
   }
 })
 
@@ -34,7 +42,7 @@ router.post('/upload-resource', upload.single('file'), (req, res) => {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
   // You may want to upload to cloud storage and return a public URL instead
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  const fileUrl = `http://170.64.236.0:8080/uploads/${req.file.filename}`;
   res.json({
     success: true,
     data: { secure_url: fileUrl },

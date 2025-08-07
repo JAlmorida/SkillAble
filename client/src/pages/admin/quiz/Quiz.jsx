@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const Quiz = ({ quiz, courseId, lectureId, lessonId, index }) => {
   const navigate = useNavigate();
   const goToEditQuiz = () => {
-    navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quiz._id}`);
+    navigate(`/author/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quiz._id}`);
   };
   
   return (

@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useEditLessonMutation, useGetLessonByIdQuery, useRemoveLessonMutation } from "@/features/api/lessonApi";
 import { useGetLessonQuizzesQuery, useUpdateQuizMutation } from "@/features/api/quizApi";
 import axios from 'axios';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import FileCard from '@/components/lessonUi/FileCard';
 import CreateQuiz from '../CreateQuiz';
 import { BookOpen } from "lucide-react";
@@ -30,7 +30,7 @@ function EnrolledCourseCard({ course }) {
   );
 }
 
-const MEDIA_API = "http://localhost:8080/api/v1/media";
+const MEDIA_API = "/api/v1/media";
 
 const uploadInputWrapper =
   "border-2 border-dashed border-blue-400 rounded-lg p-2 flex items-center gap-3 bg-white dark:bg-[#23232a]";
@@ -61,7 +61,7 @@ const EditLesson = () => {
   const [resourceFiles, setResourceFiles] = useState([]);
   const [maxAttempts, setMaxAttempts] = useState(5);
 
-  const { data: lessonData } = useGetLessonByIdQuery(lessonId);
+  const { data: lessonData, refetch: refetchLesson } = useGetLessonByIdQuery(lessonId);
   const lesson = lessonData?.lesson;
 
   const { data: quizzesData } = useGetLessonQuizzesQuery(lessonId);
@@ -91,11 +91,13 @@ const EditLesson = () => {
   useEffect(() => {
     if (isSuccess) {
       toast.success(data?.message || "Update Successful");
+      // Refetch lesson data to ensure editor content is updated
+      refetchLesson();
     }
     if (error) {
       toast.error(error.data?.message || "Failed to Update lesson");
     }
-  }, [isSuccess, error, data]);
+  }, [isSuccess, error, data, refetchLesson]);
 
   useEffect(() => {
     if (removeSuccess) {
@@ -110,7 +112,7 @@ const EditLesson = () => {
       formData.append("file", file);
       setMediaProgress(true);
       try {
-        const res = await axios.post(`http://localhost:8080/api/v1/media/upload-video`, formData, {
+        const res = await axios.post(`/api/v1/media/upload-video`, formData, {
           onUploadProgress: ({ loaded, total }) => {
             setUploadProgress(Math.round((loaded * 100) / total));
           }
@@ -146,7 +148,7 @@ const EditLesson = () => {
       formData.append("file", file);
       setMediaProgress(true);
       try {
-        const res = await axios.post(`http://localhost:8080/api/v1/media/upload-resource`, formData, {
+        const res = await axios.post(`/api/v1/media/upload-resource`, formData, {
           onUploadProgress: ({ loaded, total }) => {
             setUploadProgress(Math.round((loaded * 100) / total));
           }
@@ -174,6 +176,8 @@ const EditLesson = () => {
       videoUrl,
       resourceFiles,
     });
+    // Refetch lesson data after successful update
+    await refetchLesson();
   };
 
   const removeLessonHandler = async () => {
@@ -190,7 +194,7 @@ const EditLesson = () => {
   return (
     <div className="w-full py-8 px-2 bg-white dark:bg-[#111112] min-h-screen">
       <div className="flex items-center mb-6 gap-2">
-        <Link to={`/admin/course/${courseId}/lecture/${lectureId}`}>
+      <Link to={`/author/course/${courseId}/lecture/${lectureId}`}>
           <button
             type="button"
             className="flex items-center gap-2 bg-transparent text-blue-600 dark:text-blue-400 font-semibold rounded-none border-none shadow-none px-0 py-0 focus:outline-none"

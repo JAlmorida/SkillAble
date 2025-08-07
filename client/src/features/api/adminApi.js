@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const ADMIN_API = "http://localhost:8080/api/v1/admin";
+const ADMIN_API = "/api/v1/admin";
 
 export const adminApi = createApi({
   reducerPath: "adminApi",

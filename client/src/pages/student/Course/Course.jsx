@@ -36,13 +36,24 @@ const Course = ({ course, isEnrolled }) => {
     const lectures = progressData.data.courseDetails.lectures;
     const progressArr = progressData.data.progress;
 
+    console.log("Course progress data:", {
+      courseId: course._id,
+      lectures: lectures.length,
+      progressArr: progressArr?.length || 0,
+      progressData: progressData.data
+    });
+
     // Build a map of completed lessons from progress
     const lessonProgressMap = {};
     progressArr?.forEach(lectureProgress => {
+      console.log("Lecture progress:", lectureProgress);
       lectureProgress.lessonProgress?.forEach(lp => {
+        console.log("Lesson progress:", lp);
         if (lp.completed) lessonProgressMap[lp.lessonId] = true;
       });
     });
+
+    console.log("Lesson progress map:", lessonProgressMap);
 
     // Map isCompleted onto each lesson
     const allLessons = lectures.flatMap(lecture =>
@@ -55,6 +66,13 @@ const Course = ({ course, isEnrolled }) => {
     const totalLessons = allLessons.length;
     const completedLessons = allLessons.filter(lesson => lesson.isCompleted).length;
     const percent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+    
+    console.log("Progress calculation:", {
+      totalLessons,
+      completedLessons,
+      percent
+    });
+    
     userProgress = { enrolled: true, progress: percent };
   }
 

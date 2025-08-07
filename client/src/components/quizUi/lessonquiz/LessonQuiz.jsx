@@ -1,9 +1,8 @@
 import { useGetLessonQuizzesQuery } from '@/features/api/quizApi';
 import React from 'react'
-import { Card, CardContent } from '../../ui/card';
 import QuizCard from './QuizCard';
 
-const LessonQuiz = ({ lessonId, courseId, lectureProgress }) => { // Accept lessonId, courseId, and lectureProgress as props
+const LessonQuiz = ({ lessonId, courseId, lectureProgress }) => { 
     if (!lessonId || !courseId) return null;
     
     const { data: quizzesData, isLoading } = useGetLessonQuizzesQuery(lessonId, {
@@ -26,7 +25,7 @@ const LessonQuiz = ({ lessonId, courseId, lectureProgress }) => { // Accept less
                         quizId={quiz._id} 
                         courseId={courseId} 
                         lectureProgress={lectureProgress}
-                        lessonId={lessonId} // <-- pass lessonId here!
+                        lessonId={lessonId} 
                     />
                 ) : null
             )}

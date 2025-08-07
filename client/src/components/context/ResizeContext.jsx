@@ -12,21 +12,26 @@ export const useResize = () => {
 }
 
 const SCALE_LEVELS = {
-    small: { scale: 1, name: 'Small' },
-    medium: { scale: 1.125, name: 'Medium' },
-    large: { scale: 1.25, name: 'Large' },
+    tiny: { scale: 0.75, name: 'Tiny' },
+    small: { scale: 0.875, name: 'Small' },
+    medium: { scale: 1, name: 'Medium' },
+    large: { scale: 1.125, name: 'Large' },
+    xlarge: { scale: 1.25, name: 'Extra Large' },
+    xxlarge: { scale: 1.375, name: '2X Large' },
+    huge: { scale: 1.5, name: 'Huge' },
+    massive: { scale: 1.75, name: 'Massive' },
 };
 
 export const ResizeProvider = ({ children, user }) => {
     const getKey = (key) => `${user?.id || "guest"}_${key}`;
-    const [currentScale, setCurrentScale ] = useState('small');
+    const [currentScale, setCurrentScale] = useState('medium');
 
     const { data: settings, isSuccess } = useGetSettingsQuery(undefined, { skip: !user });
     const [updateSettings] = useUpdateSettingsMutation();
 
     useEffect(() => {
         if (isSuccess && settings) {
-            setCurrentScale(settings.accessibilityScale ?? 'small');
+            setCurrentScale(settings.accessibilityScale ?? 'medium');
         }
     }, [isSuccess, settings]);
 
@@ -60,12 +65,25 @@ export const ResizeProvider = ({ children, user }) => {
         }
     };
 
+    // Get scale index for slider
+    const getScaleIndex = (scaleKey) => {
+        return Object.keys(SCALE_LEVELS).indexOf(scaleKey);
+    };
+
+    // Get scale key from index
+    const getScaleKey = (index) => {
+        return Object.keys(SCALE_LEVELS)[index];
+    };
+
     const value = {
         currentScale, 
         changeScale, 
         scaleOption: SCALE_LEVELS, 
         currentScaleValue: SCALE_LEVELS[currentScale].scale, 
-        currentScaleName: SCALE_LEVELS[currentScale].name 
+        currentScaleName: SCALE_LEVELS[currentScale].name,
+        getScaleIndex,
+        getScaleKey,
+        totalScales: Object.keys(SCALE_LEVELS).length
     };
 
     return (

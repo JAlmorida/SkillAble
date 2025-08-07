@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const CATEGORY_API = "http://localhost:8080/api/v1/categories";
+const CATEGORY_API = "/api/v1/categories";
 
 export const categoryApi = createApi({
   reducerPath: "categoryApi",

@@ -128,7 +128,7 @@
   .text-5xl { font-size: calc(3rem * var(--accessibility-font-scale)) !important; }
 
   /* Scale form elements - exclude switch from general button scaling */
-  button:not([data-radix-collection-item]) {
+  button:not([data-radix-collection-item]):not(.str-chat__message-simple__actions__action):not(.str-chat__message-reply-in-thread-button):not(.str-chat__message-actions-box-button):not(.str-chat__message-reactions-button) {
     padding: calc(0.5rem * var(--accessibility-space-scale)) calc(1rem * var(--accessibility-space-scale));
     font-size: calc(0.875rem * var(--accessibility-font-scale));
     min-height: calc(2.5rem * var(--accessibility-component-scale));
@@ -166,12 +166,12 @@
   }
 
   /* Focus and interaction states */
-  button:not([data-radix-collection-item]), input:not([role="switch"]), select, textarea, [role="button"], 
+  button:not([data-radix-collection-item]):not(.str-chat__message-simple__actions__action):not(.str-chat__message-reply-in-thread-button):not(.str-chat__message-actions-box-button):not(.str-chat__message-reactions-button), input:not([role="switch"]), select, textarea, [role="button"], 
   .cursor-pointer {
     transition: all 0.2s ease;
   }
 
-  button:hover:not([data-radix-collection-item]), input:hover:not([role="switch"]), select:hover, textarea:hover,
+  button:hover:not([data-radix-collection-item]):not(.str-chat__message-simple__actions__action):not(.str-chat__message-reply-in-thread-button):not(.str-chat__message-actions-box-button):not(.str-chat__message-reactions-button), input:hover:not([role="switch"]), select:hover, textarea:hover,
   [role="button"]:hover, .cursor-pointer:hover {
     transform: translateY(-1px);
   }
@@ -198,10 +198,57 @@
   }
 
   /* SVG scaling */
-  svg {
+  svg:not(.str-chat__message-action-icon):not(.str-chat__icon):not(.str-chat__avatar svg) {
     width: 1.25rem;
     height: 1.25rem;
   }
+
+  /* Stream Chat button sizing - make send button and thread close button bigger */
+  .str-chat__message-input__send-button,
+  .str-chat__thread-header__close-button {
+    min-width: 3.5rem !important;
+    min-height: 3.5rem !important;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    padding: 0.75rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .str-chat__message-input__send-button svg,
+  .str-chat__thread-header__close-button svg {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+  }
+
+  /* Additional styling to make buttons more prominent */
+  .str-chat__message-input__send-button {
+    background-color: hsl(var(--primary)) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .str-chat__message-input__send-button:hover {
+    background-color: hsl(var(--primary) / 0.9) !important;
+    transform: scale(1.05) !important;
+  }
+
+  .str-chat__thread-header__close-button {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+  }
+
+  .str-chat__thread-header__close-button:hover {
+    background-color: hsl(var(--muted) / 0.8) !important;
+    transform: scale(1.05) !important;
+  }
+
+
+
+
+
+
 
   .accessibility-scaled svg {
     width: calc(1.25rem * var(--accessibility-component-scale));
@@ -295,82 +342,28 @@ html {
   * {
     -webkit-tap-highlight-color: hsl(var(--primary) / 0.1);
   }
+
+  /* Make Stream Chat buttons even bigger on mobile for better touch targets */
+  .str-chat__message-input__send-button,
+  .str-chat__thread-header__close-button {
+    min-width: 4rem !important;
+    min-height: 4rem !important;
+    width: 4rem !important;
+    height: 4rem !important;
+    padding: 1rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .str-chat__message-input__send-button svg,
+  .str-chat__thread-header__close-button svg {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
 }
 
 /* Remove old conflicting styles and optimize for performance */
 body, #root {
   min-height: 0;
-}
-
-/* --- Stream Chat Custom Styles --- */
-.str-chat__channel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.dark .str-chat__channel {
-  background: #000 !important;
-}
-
-.str-chat__container {
-  max-width: 1200px;
-  width: 100%;
-  height: 80% !important;
-  margin: 0 auto !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  background: #fff;
-}
-
-.dark .str-chat__container {
-  background: #000 !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-}
-
-.str-chat__list {
-  background-color: #ffffff;
-  padding: 12px;
-}
-
-.dark .str-chat__list {
-  background-color: #000 !important;
-}
-
-.str-chat__list-notifications {
-  display: none;
-}
-
-.str-chat__message-input {
-  border-top: 1px solid #ddd;
-  background: #fff;
-}
-
-.dark .str-chat__message-input {
-  border-top: 1px solid #23232a;
-  background: #000 !important;
-}
-
-.dark .str-chat__message-input,
-.dark .str-chat__message-input * {
-  color: #f3f4f6 !important;
-  caret-color: #f3f4f6 !important;
-}
-
-/* Light mode (default) */
-.str-chat__header-livestream,
-.str-chat__header {
-  background: #fff;
-  color: #18181b;
-}
-
-/* Dark mode */
-.dark .str-chat__header-livestream,
-.dark .str-chat__header {
-  background: #000 !important;
-  color: #f3f4f6;
 }
 
 [data-resize="true"], 
@@ -388,7 +381,7 @@ body, #root {
 .text-4xl[data-resize="true"] { font-size: calc(2.25rem * var(--accessibility-font-scale)) !important; }
 .text-5xl[data-resize="true"] { font-size: calc(3rem * var(--accessibility-font-scale)) !important; }
 
-[data-resize="true"] svg, 
+[data-resize="true"], 
 [data-resize="true"].resize-icon {
   width: calc(1.25rem * var(--accessibility-component-scale));
   height: calc(1.25rem * var(--accessibility-component-scale));
@@ -399,83 +392,81 @@ svg[data-resize="true"] {
   height: calc(1.25rem * var(--accessibility-component-scale));
 }
 
-/* --- Force Stream Chat message action icons to be visible --- */
-/* Light mode: black icons */
-.str-chat__message-action-icon,
-.str-chat__message-action-icon * {
-  fill: red !important;
-  color: red !important;
-  background: yellow !important;
-  width: 2rem !important;
-  height: 2rem !important;
-  z-index: 9999 !important;
-  opacity: 1 !important;
-  display: inline !important;
+/* Toast container */
+.react-hot-toast {
+  font-family: 'Inter', sans-serif;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.12);
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  background: #fff;
+  color: #222;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  max-width: 350px;
 }
 
-.dark .str-chat__message-action-icon {
-  fill: #fff !important;   
-  color: #fff !important;
+/* Success toast */
+.react-hot-toast--success {
+  background: #e6f9f0;
+  color: #0e766e;
+  border-color: #34d399;
 }
 
-.ql-container {
-  max-height: 36rem;  
-  overflow-y: auto;
-  
+/* Error toast */
+.react-hot-toast--error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #f87171;
 }
 
-/* Dark mode for ReactQuill */
-.dark .ql-container, .quill-dark .ql-container {
-  background: #18181b !important;
-  color: #f3f4f6 !important;
+/* Info toast */
+.react-hot-toast--info {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #60a5fa;
 }
 
-.dark .ql-editor, .quill-dark .ql-editor {
-  background: #18181b !important;
-  color: #f3f4f6 !important;
+/* Toast progress bar (if used) */
+.react-hot-toast__progress {
+  background: #2563eb;
+  height: 3px;
+  border-radius: 2px;
 }
 
-.dark .ql-toolbar, .quill-dark .ql-toolbar {
-  background: #23232a !important;
-  color: #f3f4f6 !important;
-  border-color: #23232a !important;
+/* Add this to your global CSS */
+.screen-reader-word {
+  transition: all 0.2s ease;
+  border-radius: 2px;
+  padding: 1px 2px;
+  display: inline;
 }
 
-.dark .ql-toolbar button, .quill-dark .ql-toolbar button {
-  color: #f3f4f6 !important;
+.screen-reader-word-highlighted {
+  background-color: #3b82f6 !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 2px !important;
+  padding: 1px 2px !important;
+  transition: all 0.2s ease !important;
 }
 
-.dark .ql-toolbar .ql-stroke, .quill-dark .ql-toolbar .ql-stroke {
-  stroke: #f3f4f6 !important;
+/* Add this to your global CSS */
+.screen-reader-reading {
+  background-color: #3b82f6 !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 4px !important;
+  padding: 2px 4px !important;
+  transition: all 0.3s ease !important;
 }
 
-.dark .ql-toolbar .ql-fill, .quill-dark .ql-toolbar .ql-fill {
-  fill: #f3f4f6 !important;
+.screen-reader-active {
+  background-color: rgba(59, 130, 246, 0.1);
+  transition: background-color 0.2s ease;
 }
 
-.dark .ql-editor,
-.quill-dark .ql-editor {
-  color: #f3f4f6 !important;
-}
-
-.dark .ql-editor * ,
-.quill-dark .ql-editor * {
-  color: #f3f4f6 !important;
-  border-color: #444 !important;
-  background-color: transparent !important;
-}
-
-.dark .ql-container,
-.quill-dark .ql-container {
-  border: none !important;
-}
-
-/* Override for sheet trigger button - highest specificity */
-.sheet-trigger-no-hover:hover {
-  transform: none !important;
-}
-
-/* Also add this to ensure the data attribute works */
-button[data-radix-collection-item]:hover {
-  transform: none !important;
+.screen-reader-stopped {
+  background-color: rgba(239, 68, 68, 0.1);
+  transition: background-color 0.3s ease;
 }

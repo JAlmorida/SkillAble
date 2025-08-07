@@ -37,7 +37,7 @@ const AddCourse = () => {
   useEffect(() => {
     if (isSuccess) {
       toast.success(data?.message || "Course created successfully!");
-      navigate("/admin/course");
+      navigate("/author/course");
     }
   }, [isSuccess, error, data, navigate]);
 
@@ -110,7 +110,7 @@ const AddCourse = () => {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => navigate("/admin/course")}
+            onClick={() => navigate("/author/course")}
             className="mb-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -254,7 +254,7 @@ const AddCourse = () => {
             <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
               <Button
                 variant="outline"
-                onClick={() => navigate("/admin/course")}
+                onClick={() => navigate("/author/course")}
                 className="flex-1 sm:flex-none border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Cancel

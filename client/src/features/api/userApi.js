@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { userLoggedIn } from "../authSlice";
 
-const USER_API = "http://localhost:8080/api/v1/user/";
+const USER_API = "/api/v1/user/";
 
 export const userApi = createApi({
   reducerPath: "userApi",
@@ -62,6 +62,18 @@ export const userApi = createApi({
         body: { userId, newRole },
       }),
     }),
+    approveUser: builder.mutation({
+      query: (userId) => ({
+        url: `/users/${userId}/approve`,
+        method: 'PATCH',
+      }),
+    }),
+    rejectUser: builder.mutation({
+      query: (userId) => ({
+        url: `/users/${userId}/reject`,
+        method: 'DELETE',
+      }),
+    }),
   }),
 });
 
@@ -72,5 +84,7 @@ export const {
   useGetUserEnrollmentDetailsQuery, 
   useGetSettingsQuery,
   useUpdateSettingsMutation, 
-  useChangeUserRoleMutation
+  useChangeUserRoleMutation,
+  useApproveUserMutation,
+  useRejectUserMutation
 } = userApi;

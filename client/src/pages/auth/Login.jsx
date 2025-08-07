@@ -7,10 +7,12 @@ import { useLoginUserMutation } from "@/features/api/authApi";
 import Input from "@/components/ui/input";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 import toast, { Toaster } from "react-hot-toast"; // Add Toaster import
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({ email: "", password: "" });
   const [showForgot, setShowForgot] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [
     loginUser,
@@ -26,11 +28,15 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const result = await loginUser(loginInput).unwrap();
-      toast.success(result.message || "Login successful.");
+      const result = await loginUser({ email: loginInput.email, password: loginInput.password });
+      if (result?.error?.status === 403) {
+        toast.error(result.error.data.message); // "Your account is pending admin approval..."
+      } else if (result?.data?.success) {
+        toast.success(result.data.message || "Login successful.");
       setTimeout(() => {
         navigate("/", { replace: true });
       }, 100);
+      }
     } catch (error) {
       const errorMessage =
         error.data?.message || error.message || "Login Failed";
@@ -84,15 +90,35 @@ const Login = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
-              <Input
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                className="w-full"
-                value={loginInput.password}
-                onChange={changeInputHandler}
-                required
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  className="w-full"
+                  value={loginInput.password}
+                  onChange={changeInputHandler}
+                  required
+                />
+                <button
+                  type="button"
+                  className="text-gray-500 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-[#23232a] hover:bg-gray-100 dark:hover:bg-[#23232a]/80 transition"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  className="text-blue-600 dark:text-blue-400 text-xs hover:underline focus:outline-none"
+                  onClick={() => setShowForgot(true)}
+                >
+                  Forgot Password?
+                </button>
+              </div>
             </div>
             <Button
               type="submit"
@@ -118,34 +144,6 @@ const Login = () => {
                   Create one
                 </Link>
               </p>
-              <button
-                type="button"
-                onClick={() => setShowForgot(true)}
-                className="
-                  mt-3
-                  flex items-center justify-center gap-1
-                  text-sm font-medium
-                  text-blue-500 dark:text-blue-400
-                  hover:text-blue-700 dark:hover:text-blue-300
-                  hover:underline
-                  transition-colors
-                  focus:outline-none focus:ring-2 focus:ring-blue-400
-                  group
-                "
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-blue-400 group-hover:text-blue-600 dark:text-blue-300 dark:group-hover:text-blue-200 transition-colors"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 17v.01M12 13a4 4 0 100-8 4 4 0 000 8zm0 0v4m0 0h.01" />
-                </svg>
-                Forgot Password?
-              </button>
             </div>
           </form>
         </div>
@@ -188,9 +186,7 @@ const Login = () => {
           .animate-bounce-slow { animation: bounce 2s infinite; }
         `}
       </style>
-      
-      <ForgotPasswordModal open={showForgot} onClose={() => setShowForgot(false)} />
-      
+            
       {/* Toast Container - Add this! */}
       <Toaster
         position="top-right"
@@ -217,6 +213,7 @@ const Login = () => {
           },
         }}
       />
+      <ForgotPasswordModal open={showForgot} onClose={() => setShowForgot(false)} />
     </div>
   );
 };

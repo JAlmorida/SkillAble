@@ -17,9 +17,7 @@ import CourseDetail from "./pages/student/Course/CourseDetail.jsx";
 import CourseProgress from "./pages/student/Course/CourseProgress.jsx";
 import SearchPage from "./pages/student/User/SearchPage.jsx";
 import EnrollCourseProtectedRoute from "./components/courseUi/EnrollCourseProtectedRoute.jsx";
-import ChatHomePage from "./pages/student/Chat/ChatHomePage.jsx";
 import Register from "./pages/auth/Register.jsx";
-import Onboarding from "./pages/auth/Onboarding.jsx";
 import NotificationsPage from "./pages/student/User/NotificationsPage.jsx";
 import ChatPage from "./pages/student/Chat/ChatPage.jsx";
 import CallPage from "./pages/student/Chat/CallPage.jsx";
@@ -33,7 +31,7 @@ import QuizResults from "./pages/student/quiz/QuizResults.jsx";
 import UserEnrollmentDetails from "./pages/admin/users/UserEnrollmentDetails.jsx";
 import UserManagement from "./pages/admin/users/UserManagement.jsx";
 import ProgressHistory from "./pages/student/Course/ProgressHistory.jsx";
-import { AdminRoute, AuthenticatedUser, OnboardingRoute, ProtectedRoute } from "./components/context/ProtectedRoutes.jsx";
+import { AdminRoute, AuthorRoute, AuthenticatedUser, ProtectedRoute } from "./components/context/ProtectedRoutes.jsx";
 import { ThemeProvider } from "./components/context/ThemeProvider.jsx";
 import { ColorBlindProvider } from "./components/context/ColorBlindContext.jsx";
 import { ZoomProvider } from "./components/context/ZoomProvider.jsx";
@@ -51,7 +49,9 @@ import { ChatProvider } from "./components/context/ChatProvider.jsx";
 import { EnrollmentNotificationProvider } from "@/components/context/EnrollmentNotificationProvider";
 import FloatingZoomPanel from "./components/controls/FloatingZoomPanel.jsx";
 import { useZoom } from "./components/context/ZoomProvider";
-import ResetPassword from "./pages/auth/ResetPasswordPage.jsx";import { Toaster } from "react-hot-toast"; // Add this import
+import ResetPassword from "./pages/auth/ResetPasswordPage.jsx";
+import './index.css';
+import AuthorCoursesDashboard from "./pages/author/AuthorCoursesDashboard.jsx";
 
 const appRouter = createBrowserRouter([
   {
@@ -92,34 +92,10 @@ const appRouter = createBrowserRouter([
         )
       }, 
       {
-        path: "onboarding",
-        element: (
-          <OnboardingRoute>
-            <Onboarding />
-          </OnboardingRoute>
-        ),
-      },
-      {
         path: "profile",
         element: (
           <ProtectedRoute>
             <Profile />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "settings",
-        element: (
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "chat",
-        element: (
-          <ProtectedRoute>
-            <ChatHomePage />
           </ProtectedRoute>
         ),
       },
@@ -235,7 +211,7 @@ const appRouter = createBrowserRouter([
           </ProtectedRoute>
         )
       },
-      // Admin routes
+      // Admin routes (dashboard and user management ONLY)
       {
         path: "admin",
         element: (
@@ -249,8 +225,31 @@ const appRouter = createBrowserRouter([
             element: <Dashboard />,
           },
           {
+            path: "userDetails",
+            element: <UserManagement />
+          },
+          {
+            path: "users/:userId/enrollments",
+            element: <UserEnrollmentDetails />
+          }
+        ],
+      },
+      // Author routes (course editing/creation ONLY)
+      {
+        path: "author",
+        element: (
+          <AuthorRoute>
+            <Outlet />
+          </AuthorRoute>
+        ),
+        children: [
+          {
             path: "course",
             element: <CourseTable />,
+          },
+          {
+            path: "author/dashboard", 
+            element: <AuthorCoursesDashboard/>
           },
           {
             path: "course/create",
@@ -275,14 +274,6 @@ const appRouter = createBrowserRouter([
           {
             path: "course/:courseId/lecture/:lectureId/lesson/:lessonId/quiz/:quizId",
             element: <CreateQuestion />
-          },
-          {
-            path: "userDetails",
-            element: <UserManagement />
-          },
-          {
-            path: "users/:userId/enrollments",
-            element: <UserEnrollmentDetails />
           }
         ],
       },
@@ -304,6 +295,50 @@ function ZoomPanelWithContext() {
 function App() {
   const user = useSelector(state => state.auth.user);
 
+  // Handle service worker messages for mute status
+  React.useEffect(() => {
+    const handleServiceWorkerMessage = async (event) => {
+      if (event.data && event.data.type === 'CHECK_MUTE_STATUS' && event.data.channelId) {
+        try {
+          // Get mute status from localStorage
+          const userId = user?._id;
+          if (userId) {
+            const stored = localStorage.getItem(`mutedChannels_${userId}`);
+            if (stored) {
+              const mutedChannels = new Set(JSON.parse(stored));
+              const isMuted = mutedChannels.has(event.data.channelId);
+              
+              // Send response back to service worker
+              event.ports[0]?.postMessage({
+                isMuted: isMuted
+              });
+            } else {
+              event.ports[0]?.postMessage({
+                isMuted: false
+              });
+            }
+          } else {
+            event.ports[0]?.postMessage({
+              isMuted: false
+            });
+          }
+        } catch (error) {
+          console.error('Error checking mute status for service worker:', error);
+          event.ports[0]?.postMessage({
+            isMuted: false
+          });
+        }
+      }
+    };
+
+    // Listen for messages from service worker
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, [user?._id]);
+
   if (user === undefined) {
     return <LoadingSpinner />;
   }
@@ -321,45 +356,6 @@ function App() {
                       <ZoomWrapper>
                         <ZoomPanelWithContext />
                         <RouterProvider router={appRouter} />
-                        
-                        {/* Global Toast Container - Add this! */}
-                        <Toaster
-                          position="top-right"
-                          reverseOrder={false}
-                          gutter={8}
-                          toastOptions={{
-                            duration: 4000,
-                            style: {
-                              background: 'var(--toast-bg, #363636)',
-                              color: 'var(--toast-text, #fff)',
-                              fontSize: '14px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--toast-border, transparent)',
-                              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                              maxWidth: '400px',
-                            },
-                            success: {
-                              duration: 3000,
-                              iconTheme: {
-                                primary: '#10b981',
-                                secondary: '#fff',
-                              },
-                            },
-                            error: {
-                              duration: 4000,
-                              iconTheme: {
-                                primary: '#ef4444',
-                                secondary: '#fff',
-                              },
-                            },
-                            loading: {
-                              iconTheme: {
-                                primary: '#3b82f6',
-                                secondary: '#fff',
-                              },
-                            },
-                          }}
-                        />
                       </ZoomWrapper>
                     </CaptionProvider>
                   </ThemeProvider>

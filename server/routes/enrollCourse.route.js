@@ -4,6 +4,7 @@ import {
   courseEnroll,
   getCourseDetailWithEnrollmentStatus,
   getAllEnrolledCourses,
+  unenrollCourse,
 } from "../controllers/courseEnroll.controller.js";
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.route("/course/:courseId/detail-with-status").get(isAuthenticated,getCour
 // Get all enrolled courses for the user
 router.route("/").get(isAuthenticated, getAllEnrolledCourses);
 // Get user course enrollment
+router.route("/unenroll/:courseId").delete(isAuthenticated, unenrollCourse);
 
 export default router;

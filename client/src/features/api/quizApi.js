@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const QUIZ_API = "http://localhost:8080/api/v1/quiz";
+const QUIZ_API = "/api/v1/quiz";
 
 export const quizApi = createApi({
     reducerPath: 'quizApi',
@@ -104,11 +104,12 @@ export const quizApi = createApi({
             invalidatesTags: ["Attempt"]
         }),
         submitQuizAttempt: builder.mutation({
-            query: (attemptId) => ({
+            query: ({ attemptId, answers }) => ({
                 url: `/attempt/submit/${attemptId}`,
-                method: "POST"
+                method: "POST",
+                body: { answers }
             }),
-            invalidatesTags: ["Attempt"]
+            invalidatesTags: ["Attempt", "CourseProgress"]
         })
     }),
 });

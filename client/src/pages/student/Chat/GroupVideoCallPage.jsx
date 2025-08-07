@@ -19,6 +19,16 @@ import PageLoader from '@/components/loadingUi/PageLoader';
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 const GroupVideoCallPage = () => {
+  const hasMediaDevices = typeof navigator !== "undefined" && !!navigator.mediaDevices;
+  console.log("hasMediaDevices:", hasMediaDevices);
+  if (!hasMediaDevices) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p>Your browser does not support video calls.</p>
+      </div>
+    );
+  }
+
   const { channelId } = useParams();
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);

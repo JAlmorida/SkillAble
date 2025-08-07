@@ -8,13 +8,10 @@ import { Newspaper, CheckCircle, RotateCcw } from 'lucide-react';
 const QuizCard = ({ quizId, courseId, lectureProgress, lessonId }) => {
   const { data: quiz, isLoading } = useGetQuizByIdQuery(quizId, { skip: !quizId });
   
-  // Check for in-progress attempt
   const { data: inProgressAttempt, isLoading: inProgressLoading } = useGetInProgressAttemptQuery(quizId, {
     skip: !quizId
   });
 
-  // This is the new, correct logic.
-  // It checks if THIS user has attempted THIS quiz using their specific progress data.
   const isCompletedForUser = lectureProgress?.quizProgress?.some(
     qp => qp.quizId === quizId && qp.attempted
   );

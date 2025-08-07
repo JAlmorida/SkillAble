@@ -7,7 +7,7 @@ import {
 import { ChevronLeft, Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import Lecture from "./Lecture";
 import PageLoader from "@/components/loadingUi/PageLoader";
 import Input from "@/components/ui/input";
@@ -49,7 +49,7 @@ const CreateLecture = () => {
         <button
           variant="outline"
           type="button"
-          onClick={() => navigate(`/admin/course/${courseId}`)}
+          onClick={() => navigate(`/author/course/${courseId}`)}
           className="flex items-center gap-2 rounded-full bg-transparent text-blue-600 dark:text-blue-400 font-semibold focus:outline-none active:bg-transparent text-sm sm:text-base"
           title="Back to Course Table"
         >

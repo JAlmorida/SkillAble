@@ -136,8 +136,10 @@ async function staleWhileRevalidateStrategy(request) {
   
   const networkResponsePromise = fetch(request).then(response => {
     if (response.ok) {
+      // Clone the response before using it for caching
+      const responseClone = response.clone();
       const cache = caches.open(CACHE_NAME);
-      cache.then(c => c.put(request, response.clone()));
+      cache.then(c => c.put(request, responseClone));
     }
     return response;
   });
@@ -172,8 +174,63 @@ self.addEventListener('push', function(event) {
     }
   }
 
+  // Check if this is a chat notification and if the channel is muted
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
+    (async () => {
+      try {
+        // Check if this is a chat notification with channel data
+        if (notificationData.data && notificationData.data.channelId) {
+          const channelId = notificationData.data.channelId;
+          
+          // Try to get mute status from any open client
+          const clients = await self.clients.matchAll();
+          let isMuted = false;
+          
+          for (const client of clients) {
+            try {
+              // Send a message to check mute status
+              const response = await client.postMessage({
+                type: 'CHECK_MUTE_STATUS',
+                channelId: channelId
+              });
+              
+              if (response && typeof response.isMuted === 'boolean') {
+                isMuted = response.isMuted;
+                break;
+              }
+            } catch (error) {
+              console.log('Could not check mute status from client:', error);
+            }
+          }
+          
+          if (isMuted) {
+            console.log('Channel is muted, not showing notification for:', channelId);
+            return; // Don't show notification for muted channels
+          }
+        }
+
+        // Show notification if not muted or not a chat notification
+        return self.registration.showNotification(notificationData.title, {
+          body: notificationData.body,
+          icon: notificationData.icon,
+          badge: notificationData.badge,
+          tag: notificationData.tag,
+          data: notificationData.data,
+          actions: [
+            {
+              action: 'view',
+              title: 'View Course'
+            },
+            {
+              action: 'dismiss',
+              title: 'Dismiss'
+            }
+          ]
+        });
+      } catch (error) {
+        console.error('Error checking mute status:', error);
+        // Fallback to showing notification if there's an error
+        return self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
       icon: notificationData.icon,
       badge: notificationData.badge,
@@ -189,7 +246,9 @@ self.addEventListener('push', function(event) {
           title: 'Dismiss'
         }
       ]
-    })
+        });
+      }
+    })()
   );
 });
 

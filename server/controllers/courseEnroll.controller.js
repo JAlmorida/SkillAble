@@ -3,6 +3,34 @@ import { Course } from "../models/course.model.js";
 import { CourseEnroll } from "../models/courseEnroll.model.js";
 import { Lecture } from "../models/lecture.model.js";
 import { CourseProgress } from "../models/courseProgress.js";
+import { Attempt } from "../models/attempt.model.js"; 
+import { Quiz } from "../models/quiz.model.js"; 
+import { StreamChat } from "stream-chat";
+import { upsertStreamUser } from "../utils/stream.js";
+
+// Helper function to add user to course group chat
+const addUserToCourseGroupChat = async (courseId, userId) => {
+  try {
+    // Check if Stream environment variables are available
+    if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
+      console.warn('[addUserToCourseGroupChat] Stream API keys not configured, skipping group chat addition');
+      return;
+    }
+
+    const streamClient = StreamChat.getInstance(process.env.STREAM_API_KEY, process.env.STREAM_API_SECRET);
+    const channelId = `course-${courseId}`;
+    const channel = streamClient.channel("messaging", channelId);
+
+    // Add user as a member
+    await channel.addMembers([userId]);
+    console.log(`[addUserToCourseGroupChat] Added user ${userId} to group channel ${channelId}`);
+  } catch (error) {
+    console.error(`[addUserToCourseGroupChat] Error adding user ${userId} to group channel ${channelId}:`, error);
+    // Don't throw error - this is a background operation
+    // Return a resolved promise to prevent unhandled rejections
+    return Promise.resolve();
+  }
+};
 
 // Enroll user in a course (no payment)
 export const courseEnroll = async (req, res) => {
@@ -86,6 +114,14 @@ export const courseEnroll = async (req, res) => {
       );
     }
 
+    // Add user to course group chat
+    try {
+      await addUserToCourseGroupChat(courseId, userId);
+    } catch (error) {
+      console.error("Error adding user to course group chat:", error);
+      // Don't fail the enrollment if chat addition fails
+    }
+
     const isExpired = course.expiryEnabled && enrollment?.expiresAt && new Date() > enrollment.expiresAt;
     res.status(200).json({
       ...enrollment.toObject(),
@@ -107,7 +143,13 @@ export const getCourseDetailWithEnrollmentStatus = async (req, res) => {
 
     const course = await Course.findById(courseId)
       .populate({ path: "creator" }) 
-      .populate({ path: "lectures" });
+      .populate({ 
+        path: "lectures",
+        populate: { 
+          path: "lessons",
+          populate: { path: "quiz" }
+        }
+      });
 
     if (!course) {
       return res.status(404).json({ message: "Course not found!" });
@@ -175,6 +217,72 @@ export const getAllEnrolledCourses = async (req, res) => {
     res.status(500).json({
       message: "Failed to fetch enrolled courses",
       error: error.message,
+    });
+  }
+};
+
+export const unenrollCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user?._id || req.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+    if (!courseId) {
+      return res.status(400).json({ message: "Course ID is required" });
+    }
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Check if course exists
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    // Check if enrolled
+    const enrollment = await CourseEnroll.findOne({ userId, courseId });
+    if (!enrollment) {
+      return res.status(404).json({ message: "Not enrolled in this course" });
+    }
+
+    // Delete enrollment record
+    await CourseEnroll.findByIdAndDelete(enrollment._id);
+
+    // Remove course from user's enrolledCourses
+    user.enrolledCourses = user.enrolledCourses.filter(id => id.toString() !== courseId);
+    await user.save();
+
+    // Remove user from course's enrolledStudents
+    course.enrolledStudents = course.enrolledStudents.filter(id => id.toString() !== userId);
+    await course.save();
+
+    // Delete course progress
+    await CourseProgress.findOneAndDelete({ courseId, userId });
+
+    // Delete all quiz attempts for this user and course
+    // First, find all quizzes in this course
+    const courseQuizzes = await Quiz.find({ courseId });
+    const quizIds = courseQuizzes.map(quiz => quiz._id);
+    
+    // Delete attempts for all quizzes in this course
+    if (quizIds.length > 0) {
+      await Attempt.deleteMany({ 
+        userId, 
+        quizId: { $in: quizIds } 
+      });
+    }
+
+    res.status(200).json({ 
+      message: "Successfully unenrolled from course and deleted all quiz attempts",
+      courseId 
+    });
+  } catch (error) {
+    console.error("Unenrollment error:", error);
+    res.status(500).json({ 
+      message: "Unenrollment failed", 
+      error: error.message 
     });
   }
 };

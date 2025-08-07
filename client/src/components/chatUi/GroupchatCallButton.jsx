@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 
 function GroupchatCallButton({ handleVideoCall }) {
   return (
-    <div className="p-3 border-b flex items-center justify-end max-w-9xl mx-auto w-full absolute top-0">
-
     <Button
       onClick={handleVideoCall}
       variant="success"
@@ -14,7 +12,6 @@ function GroupchatCallButton({ handleVideoCall }) {
     >
       <VideoIcon className="size-6" />
     </Button>
-    </div>
   );
 }
 

@@ -14,7 +14,10 @@ export const getCourseProgress = async (req, res) => {
 
     const course = await Course.findById(courseId).populate({
       path: 'lectures',
-      populate: { path: 'lessons' }
+      populate: { 
+        path: 'lessons',
+        populate: { path: 'quiz' }
+      }
     });
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -47,10 +50,18 @@ export const getCourseProgress = async (req, res) => {
     }
 
     // Check if all visible lectures are completed
-    const allLecturesCompleted =
-      filteredLectureProgress.length === actualLectureIds.length &&
-      filteredLectureProgress.length > 0 &&
-      filteredLectureProgress.every(lp => lp.completed);
+    // Create a map of lecture progress for quick lookup
+    const lectureProgressMap = new Map();
+    filteredLectureProgress.forEach(lp => {
+      lectureProgressMap.set(lp.lectureId.toString(), lp);
+    });
+
+    // Check if all actual lectures are completed
+    const allLecturesCompleted = actualLectureIds.length > 0 && 
+      actualLectureIds.every(lectureId => {
+        const lectureProgress = lectureProgressMap.get(lectureId);
+        return lectureProgress && lectureProgress.completed;
+      });
 
     // Set course completion status
     courseProgress.completed = allLecturesCompleted;
@@ -156,14 +167,36 @@ export const updateLessonProgress = async (req, res) => {
     }
 
     // Check if all lessons and quizzes are completed for this lecture
-    // (Assume you have a way to get totalLessons and totalQuizzes for this lecture)
-    const totalLessons = lectureProgress.lessonProgress.length; // or fetch from DB
-    const totalQuizzes = lectureProgress.quizProgress.length;   // or fetch from DB
+    // Get actual totals from the database, not from progress arrays
+    const lecture = await Lecture.findById(lectureId).populate('lessons');
+    const actualTotalLessons = lecture.lessons.length;
+    
+    // Count quizzes for all lessons in this lecture
+    const lessonIds = lecture.lessons.map(lesson => lesson._id);
+    const actualTotalQuizzes = await Quiz.countDocuments({ lesson: { $in: lessonIds } });
 
-    lectureProgress.completed = isLectureCompleted(lectureProgress, totalLessons, totalQuizzes);
+    lectureProgress.completed = isLectureCompleted(lectureProgress, actualTotalLessons, actualTotalQuizzes);
 
     // Check if all lectures are completed for the course
-    courseProgress.completed = courseProgress.lectureProgress.every(lp => lp.completed);
+    // Get all lectures in the course and check if all are completed
+    const course = await Course.findById(courseId).populate({
+      path: 'lectures',
+      populate: { path: 'lessons' }
+    });
+    const allLectureIds = course.lectures.map(l => l._id.toString());
+    
+    // Create a map of lecture progress for quick lookup
+    const lectureProgressMap = new Map();
+    courseProgress.lectureProgress.forEach(lp => {
+      lectureProgressMap.set(lp.lectureId.toString(), lp);
+    });
+    
+    // Check if all lectures are completed
+    courseProgress.completed = allLectureIds.length > 0 && 
+      allLectureIds.every(lectureId => {
+        const lectureProgress = lectureProgressMap.get(lectureId);
+        return lectureProgress && lectureProgress.completed;
+      });
 
     await courseProgress.save();
 
@@ -326,13 +359,38 @@ export const updateQuizProgress = async (req, res) => {
     }
 
     // 3. Check if all lessons and quizzes are completed for this lecture
-    const totalLessons = lectureProgress.lessonProgress.length; // or fetch from DB
-    const totalQuizzes = lectureProgress.quizProgress.length;   // or fetch from DB
+    // Get actual totals from the database, not from progress arrays
+    const lecture = await Lecture.findById(lectureId).populate({
+      path: 'lessons',
+      populate: { path: 'quiz' }
+    });
+    const actualTotalLessons = lecture.lessons.length;
+    
+    // Count lessons that have quizzes
+    const actualTotalQuizzes = lecture.lessons.filter(lesson => lesson.quiz).length;
 
-    lectureProgress.completed = isLectureCompleted(lectureProgress, totalLessons, totalQuizzes);
+    lectureProgress.completed = isLectureCompleted(lectureProgress, actualTotalLessons, actualTotalQuizzes);
 
     // 4. Check if all lectures are completed for the course
-    courseProgress.completed = courseProgress.lectureProgress.every(lp => lp.completed);
+    // Get all lectures in the course and check if all are completed
+    const course = await Course.findById(courseId).populate({
+      path: 'lectures',
+      populate: { path: 'lessons' }
+    });
+    const allLectureIds = course.lectures.map(l => l._id.toString());
+    
+    // Create a map of lecture progress for quick lookup
+    const lectureProgressMap = new Map();
+    courseProgress.lectureProgress.forEach(lp => {
+      lectureProgressMap.set(lp.lectureId.toString(), lp);
+    });
+    
+    // Check if all lectures are completed
+    courseProgress.completed = allLectureIds.length > 0 && 
+      allLectureIds.every(lectureId => {
+        const lectureProgress = lectureProgressMap.get(lectureId);
+        return lectureProgress && lectureProgress.completed;
+      });
 
     await courseProgress.save();
 

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { useEditCourseMutation, useGetCourseByIdQuery, useDeleteCourseMutation, usePublishCourseMutation } from "@/features/api/courseApi";
 import { useGetCategoriesQuery, useCreateCategoryMutation, useDeleteCategoryMutation } from "@/features/api/categoryApi";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { useCreateCourseGroupChatMutation, useGetUserCourseGroupChatsQuery } from "@/features/api/chatApi";
 import AdminGroupChatCard from "@/components/chatUi/AdminGroupChatCard";
 import React, { useEffect, useState } from "react";
@@ -52,7 +52,10 @@ const EditCourse = () => {
   });
   const params = useParams();
   const courseId = params.courseId;
-  const { data: courseByIdData, isLoading: courseByIdLoading, refetch } = useGetCourseByIdQuery(courseId, { refetchOnMountOrArgChange: true });
+  const { data: courseByIdData, isLoading: courseByIdLoading, refetch } = useGetCourseByIdQuery(courseId, { 
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true 
+  });
   const [editCourse, { isLoading, isSuccess }] = useEditCourseMutation();
   const [deleteCourse, { isLoading: removing }] = useDeleteCourseMutation();
   const [publishCourse, { isLoading: publishing }] = usePublishCourseMutation();
@@ -69,33 +72,84 @@ const EditCourse = () => {
   const [showCard, setShowCard] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [createGroupChat] = useCreateCourseGroupChatMutation();
-  const { data: groupChatsData, refetch: refetchGroupChats } = useGetUserCourseGroupChatsQuery();
+  const { data: groupChatsData, refetch: refetchGroupChats, isLoading: groupChatsLoading } = useGetUserCourseGroupChatsQuery();
   const allGroupChats = groupChatsData?.groupChats || [];
-  const thisCourseGroupChat = allGroupChats.find(gc => gc.channelId === `course-${courseId}`);
+  
+  // Debug logging for group chats query
+  console.log("Group chats query state:", {
+    isLoading: groupChatsLoading,
+    data: groupChatsData,
+    groupChats: allGroupChats
+  });
+  console.log("All group chats:", allGroupChats);
+  console.log("Course ID:", courseId);
+  console.log("Course title:", courseByIdData?.data?.courseTitle);
+  
+  // Log the first group chat to see its structure
+  if (allGroupChats.length > 0) {
+    console.log("First group chat structure:", JSON.stringify(allGroupChats[0], null, 2));
+  }
+  
+  const thisCourseGroupChat = allGroupChats.find(gc => {
+    // Primary check: channelId should match the course pattern
+    const channelIdMatch = gc.channelId === `course-${courseId}`;
+    
+    // Secondary checks for course-related metadata
+    const hasCourseMetadata = gc.courseThumbnail || gc.name?.includes('Course') || gc.name?.includes('Group');
+    const nameMatchesCourse = gc.name?.includes(courseByIdData?.data?.courseTitle);
+    
+    // Return true if channelId matches OR if it has course metadata and name matches
+    const isCourseGroup = channelIdMatch || (hasCourseMetadata && nameMatchesCourse);
+    
+    console.log("Checking group chat:", {
+      name: gc.name,
+      channelId: gc.channelId,
+      courseThumbnail: gc.courseThumbnail,
+      channelIdMatch,
+      hasCourseMetadata,
+      nameMatchesCourse,
+      isCourseGroup,
+      expectedChannelId: `course-${courseId}`
+    });
+    
+    return isCourseGroup;
+  });
+
+  // Debug logging to understand the data structure
+  console.log("Course ID:", courseId);
+  console.log("Course title:", courseByIdData?.data?.courseTitle);
+  console.log("All group chats:", allGroupChats);
+  console.log("Found course group chat:", thisCourseGroupChat);
+  console.log("Expected channel ID:", `course-${courseId}`);
+
+  const setFormFromCourse = (course) => {
+    setInput({
+      courseTitle: course.courseTitle,
+      subTitle: course.subTitle,
+      description: course.description,
+      category: course.category?._id || course.category,
+      courseLevel: course.courseLevel,
+      courseThumbnail: "",
+      expiryMode: course.expiryMode,
+      expiryDuration: course.expiryDuration,
+      expiryUnit: course.expiryUnit,
+      fixedExpiryDate: course.fixedExpiryDate,
+      expiryEnabled: course.expiryEnabled,
+      expiryDays: course.expiryDays,
+    });
+  };
 
   useEffect(() => {
-    if (courseByIdData?.course) {
-      const course = courseByIdData.course;
-      setInput({
-        courseTitle: course.courseTitle,
-        subTitle: course.subTitle,
-        description: course.description,
-        category: course.category?._id || course.category, 
-        courseLevel: course.courseLevel,
-        courseThumbnail: "",
-        expiryMode: course.expiryMode,
-        expiryDuration: course.expiryDuration,
-        expiryUnit: course.expiryUnit,
-        fixedExpiryDate: course.fixedExpiryDate,
-        expiryEnabled: course.expiryEnabled,
-        expiryDays: course.expiryDays, // Set expiryDays from course data
-      });
-    }
+    if (courseByIdData?.data) setFormFromCourse(courseByIdData.data);
   }, [courseByIdData]);
 
   useEffect(() => {
-    if (isSuccess) toast.success("Course updated.");
-  }, [isSuccess]);
+    if (isSuccess) {
+      toast.success("Course updated.");
+      // Refetch course data to ensure editor content is updated
+      refetch();
+    }
+  }, [isSuccess, refetch]);
 
   if (courseByIdLoading) return <PageLoader />;
 
@@ -112,9 +166,16 @@ const EditCourse = () => {
 
   const updateCourseHandler = async () => {
     const formData = new FormData();
-    Object.entries(input).forEach(([key, value]) => formData.append(key, value));
+    Object.entries(input).forEach(([key, value]) => {
+      // Only append values that are not undefined, null, or empty strings
+      if (value !== undefined && value !== null && value !== "" && value !== "undefined" && value !== "null") {
+        formData.append(key, value);
+      }
+    });
     await editCourse({ formData, courseId });
-    refetch();
+    // Refetch course data after successful update
+    const { data } = await refetch();
+    if (data?.data) setFormFromCourse(data.data);
     await refetchGroupChats();
   };
 
@@ -122,18 +183,42 @@ const EditCourse = () => {
     if (!window.confirm("Are you sure you want to remove this course?")) return;
     await deleteCourse(courseId).unwrap();
     toast.success("Course removed!");
-    navigate("/admin/course");
+    navigate("/author/course");
   };
 
   const handleCreateGroupChat = async (courseId) => {
     try {
-      const courseThumbnail = courseByIdData?.course?.courseThumbnail || "";
-      await createGroupChat({ courseId, name: groupName, courseThumbnail }).unwrap();
+      console.log("Creating group chat with:", { 
+        courseId, 
+        name: groupName,
+        courseTitle: courseByIdData?.data?.courseTitle 
+      });
+      const result = await createGroupChat({ courseId, name: groupName }).unwrap();
+      console.log("Group chat creation result:", result);
       setShowCard(false);
       setGroupName("");
       toast.success("Group chat created!");
+      console.log("Group chat created successfully, refetching...");
+      
+      // Force refetch immediately and then again after a delay
       await refetchGroupChats();
+      console.log("Group chats refetched immediately");
+      
+      // Force refetch with a small delay to ensure backend has processed
+      setTimeout(async () => {
+        try {
+          await refetchGroupChats();
+          console.log("Group chats refetched after delay");
+          
+          // Also force a re-render by updating a state
+          setShowCard(false); // This will trigger a re-render
+        } catch (refetchError) {
+          console.error("Error refetching group chats:", refetchError);
+        }
+      }, 1000); // Reduced delay
+      
     } catch (e) {
+      console.error("Error creating group chat:", e);
       toast.error(e.data?.message || "Failed to create group chat");
     }
   };
@@ -156,7 +241,7 @@ const EditCourse = () => {
       <div className="mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <button
-            onClick={() => navigate("/admin/course")}
+            onClick={() => navigate("/author/course")}
             className="flex items-center gap-2 px-3 py-2 sm:px-4 rounded-full bg-transparent text-blue-600 font-semibold focus:outline-none active:bg-transparent text-sm sm:text-base"
             title="Back to Course Table"
             type="button"
@@ -178,9 +263,9 @@ const EditCourse = () => {
             
             <Button
               type="button"
-              variant={courseByIdData?.course?.isPublished ? "outline" : "default"}
+              variant={courseByIdData?.data?.isPublished ? "outline" : "default"}
               className={
-                (courseByIdData?.course?.isPublished
+                (courseByIdData?.data?.isPublished
                   ? "border-green-600 text-green-600"
                   : "bg-yellow-500 text-white") +
                 " min-w-[120px] text-sm"
@@ -188,10 +273,11 @@ const EditCourse = () => {
               disabled={publishing}
               onClick={async () => {
                 try {
-                  const publish = !courseByIdData?.course?.isPublished;
+                  const publish = !courseByIdData?.data?.isPublished;
                   const res = await publishCourse({ courseId, query: publish }).unwrap();
                   toast.success(res.message);
-                  refetch();
+                  const { data } = await refetch();
+                  if (data?.data) setFormFromCourse(data.data);
                 } catch (error) {
                   toast.error("Failed to update publish status");
                 }
@@ -199,7 +285,7 @@ const EditCourse = () => {
             >
               {publishing
                 ? "Updating..."
-                : courseByIdData?.course?.isPublished
+                : courseByIdData?.data?.isPublished
                 ? "Unpublish"
                 : "Publish"}
             </Button>
@@ -408,16 +494,25 @@ const EditCourse = () => {
       {/* Course Group Chat section at the bottom */}
       <div className="mt-6 sm:mt-8">
         <div className="bg-background border border-border rounded-xl shadow p-4 sm:p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="font-semibold text-lg">Course Group Chat</h2>
+            <Button
+              onClick={refetchGroupChats}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              disabled={groupChatsLoading}
+            >
+              {groupChatsLoading ? "Loading..." : "Refresh"}
+            </Button>
           </div>
           {thisCourseGroupChat ? (
             <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {/* Course thumbnail */}
               <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
-                {courseByIdData?.course?.courseThumbnail ? (
+                {courseByIdData?.data?.courseThumbnail ? (
                   <img 
-                    src={courseByIdData.course.courseThumbnail} 
+                    src={courseByIdData.data.courseThumbnail} 
                     alt="Course thumbnail"
                     className="w-full h-full object-cover"
                   />
@@ -432,7 +527,7 @@ const EditCourse = () => {
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-base truncate">{thisCourseGroupChat.name}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {thisCourseGroupChat.members?.length || 0} members
+                  {thisCourseGroupChat.memberCount || 0} members
                 </p>
               </div>
 

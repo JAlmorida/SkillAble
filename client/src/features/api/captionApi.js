@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 // Adjust the base URL as needed for your backend
-const CAPTION_API = "http://localhost:8080/api/";
+const CAPTION_API = "/api/";
 
 export const captionApi = createApi({
   reducerPath: "captionApi",

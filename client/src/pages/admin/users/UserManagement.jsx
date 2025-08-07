@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import PageLoader from "@/components/loadingUi/PageLoader";
-import { useGetAllUsersQuery, useChangeUserRoleMutation } from "@/features/api/userApi";
+import { useGetAllUsersQuery, useChangeUserRoleMutation, useApproveUserMutation, useRejectUserMutation } from "@/features/api/userApi";
 import { User, ChevronDown, ChevronRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import toast from "react-hot-toast";
@@ -24,14 +24,18 @@ import {
 } from "@/components/ui/select";
 import { useSelector } from "react-redux";
 import { useGetCategoriesQuery } from "@/features/api/categoryApi";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const UserManagement = () => {
   const { data, isLoading, error, refetch } = useGetAllUsersQuery();
   const { data: categoryData } = useGetCategoriesQuery();
   const users = data?.users || [];
+  const pendingUsersCount = data?.pendingUsersCount || 0;
   const [expandedUser, setExpandedUser] = useState(null);
   const navigate = useNavigate();
   const [changeUserRole, { isLoading: isChangingRole }] = useChangeUserRoleMutation();
+  const [approveUser] = useApproveUserMutation();
+  const [rejectUser] = useRejectUserMutation();
   const { user } = useSelector((state) => state.auth);
   const currentUserId = user?._id;
 
@@ -60,6 +64,9 @@ const UserManagement = () => {
   }
 
   const adminCount = users.filter(u => u.role === "admin").length;
+  const pendingUsers = users.filter(u => u.isApproved === false);
+  const approvedUsers = users.filter(u => u.isApproved !== false);
+  const authorCount = users.filter(u => u.role === "author").length;
 
   return (
     <div className="max-w-8xl mx-auto p-6 space-y-6">
@@ -77,7 +84,22 @@ const UserManagement = () => {
         </Button>
       </div>
 
-      {/* Simple Table */}
+      {/* Tabs */}
+      <Tabs defaultValue="enrollments" className="w-full">
+        <TabsList>
+          <TabsTrigger value="enrollments">User Enrollments</TabsTrigger>
+          <TabsTrigger value="pending" className="relative">
+            Approving Users
+            {pendingUsersCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {pendingUsersCount > 99 ? '99+' : pendingUsersCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* User Enrollments Tab (original table) */}
+        <TabsContent value="enrollments">
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <Table>
           <TableHeader>
@@ -89,8 +111,8 @@ const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.length > 0 ? (
-              users.map((user) => (
+                {approvedUsers.length > 0 ? (
+                  approvedUsers.map((user) => (
                 <React.Fragment key={user._id}>
                   <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <TableCell className="py-4">
@@ -107,7 +129,9 @@ const UserManagement = () => {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-white">{user.name}</div>
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {user.firstName} {user.lastName}
+                              </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                         </div>
                       </div>
@@ -135,6 +159,12 @@ const UserManagement = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="student">Student</SelectItem>
+                          <SelectItem
+                            value="author"
+                            disabled={user.role !== "author" && authorCount >= 50}
+                          >
+                            Author
+                          </SelectItem>
                           <SelectItem
                             value="admin"
                             disabled={user.role !== "admin" && adminCount >= 15}
@@ -164,7 +194,6 @@ const UserManagement = () => {
                       </Button>
                     </TableCell>
                   </TableRow>
-                  
                   {expandedUser === user._id && (
                     <TableRow>
                       <TableCell colSpan={4} className="p-0">
@@ -184,6 +213,60 @@ const UserManagement = () => {
           </TableBody>
         </Table>
       </div>
+        </TabsContent>
+
+        {/* Approving Users Tab */}
+        <TabsContent value="pending">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingUsers.length > 0 ? pendingUsers.map(user => (
+                  <TableRow key={user._id}>
+                    <TableCell>{user.firstName} {user.lastName}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={async () => {
+                          await approveUser(user._id);
+                          toast.success("User approved");
+                          refetch();
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await rejectUser(user._id);
+                          toast.success("User rejected");
+                          refetch();
+                        }}
+                        className="ml-2"
+                      >
+                        Reject
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center">No users waiting for approval.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

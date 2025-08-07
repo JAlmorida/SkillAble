@@ -19,6 +19,7 @@ const ScreenReaderControls = () => {
   }
 
   return (
+    <div className="flex flex-col gap-4 w-full">
     <div className="flex items-center justify-end w-full gap-4">
       <button
         onClick={toggleScreenReader}
@@ -46,6 +47,16 @@ const ScreenReaderControls = () => {
           </select>
         </div>
       )}
+      </div>
+      
+      {/* Keyboard shortcuts info */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+        <h4 className="font-medium text-sm mb-2">Keyboard Shortcuts:</h4>
+        <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+          <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd + Alt + V</kbd> - Toggle Screen Reader</div>
+          <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd + Alt + R</kbd> - Read Current Element</div>
+        </div>
+      </div>
     </div>
   );
 };

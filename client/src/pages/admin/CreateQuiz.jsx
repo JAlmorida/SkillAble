@@ -3,7 +3,7 @@ import { useCreateQuizMutation, useGetLessonQuizzesQuery } from '@/features/api/
 import { Loader2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import Quiz from './quiz/Quiz';
@@ -109,7 +109,7 @@ const CreateQuiz = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}`)}
+              onClick={() => navigate(`/author/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}`)}
             >
               Back to lesson
             </Button>

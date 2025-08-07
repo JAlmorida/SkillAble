@@ -1,26 +1,26 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useRegisterUserMutation } from "@/features/api/authApi";
-import { Loader2, School } from "lucide-react";
+import { Loader2, School, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useGetAuthUserQuery } from "@/features/api/authApi";
+import toast from "react-hot-toast";
 import Input from "@/components/ui/input";
+import EmailConfirmationModal from "./EmailConfirmationModal";
+import ReCAPTCHA from "react-google-recaptcha";
+import { 
+  useRegisterUserMutation,
+  useGetAuthUserQuery,
+  useConfirmEmailMutation, 
+  useResendConfirmationMutation, 
+} from "@/features/api/authApi";
+import { getPasswordRequirements } from "@/utils/passwordValidation";
 
 const Register = () => {
   const [signupInput, setSignupInput] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const [
@@ -35,23 +35,54 @@ const Register = () => {
   const { refetch } = useGetAuthUserQuery();
   const navigate = useNavigate();
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState("");
+  const [passwordRequirements, setPasswordRequirements] = useState(getPasswordRequirements(""));
+
+  const [confirmEmail, { isLoading: confirmLoading }] = useConfirmEmailMutation();
+  const [resendConfirmation, { isLoading: resendLoading }] = useResendConfirmationMutation();
+
+  const isDarkMode = document.documentElement.classList.contains("dark");
+
   const changeInputHandler = (e) => {
     const { name, value } = e.target;
     setSignupInput((prev) => ({ ...prev, [name]: value }));
+    if (name === "password") {
+      setPasswordRequirements(getPasswordRequirements(value));
+    }
   };
   const handleRegistration = async (e) => {
     e.preventDefault();
+    if (!Object.values(passwordRequirements).every(Boolean)) {
+      toast.error("Password does not meet requirements.");
+      return;
+    }
+    if (signupInput.password !== signupInput.confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+    if (!recaptchaToken) {
+      toast.error("Please complete the reCAPTCHA.");
+      return;
+    }
     try {
-      const result = await registerUser(signupInput);
+      const result = await registerUser({ ...signupInput, recaptchaToken });
       if (result?.data?.success) {
-        toast.success(result.data.message || "Signup successful.");
-        navigate("/onboarding"); // Redirect to onboarding after successful registration
+        setRegisteredEmail(signupInput.email);
+        setShowConfirmModal(true);
+        // Do NOT redirect yet
+      } else if (result?.error?.data?.pendingConfirmation) {
+        // <-- Handle pending confirmation
+        setRegisteredEmail(signupInput.email);
+        setShowConfirmModal(true);
+        toast.info(result.error.data.message || "Please confirm your email.");
       }
     } catch (error) {
       toast.error(error?.data?.message || error?.message || "Signup Failed");
     }
-    // Optionally reset form here if desired
-    // setSignupInput({ name: "", email: "", password: "", confirmPassword: "", gender: "" });
   };
 
   const handleSubmit = async (e) => {
@@ -83,6 +114,28 @@ const Register = () => {
     };
   }, []);
 
+  const handleConfirm = async (code) => {
+    try {
+      await confirmEmail({ email: registeredEmail, code }).unwrap();
+      toast.success("Email confirmed! Redirecting to login...");
+      setTimeout(() => {
+        setShowConfirmModal(false);
+        navigate("/login");
+      }, 1500);
+    } catch (err) {
+      toast.error(err?.data?.message || err?.message || "Invalid or expired code");
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    try {
+      await resendConfirmation(registeredEmail).unwrap();
+      toast.success("Confirmation code resent!");
+    } catch (err) {
+      toast.error(err?.data?.message || err?.message || "Failed to resend confirmation.");
+    }
+  };
+
   return (
     <div className="relative h-screen w-screen flex flex-col-reverse lg:flex-row overflow-hidden">
       {/* Animated background blobs */}
@@ -93,8 +146,9 @@ const Register = () => {
       </div>
       {/* Register Form */}
       <div className="flex flex-1 flex-col justify-center items-center px-4 py-8 sm:py-12 md:px-8">
-        <div className="w-full max-w-xs sm:max-w-sm md:max-w-md bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
-          <div className="mb-4 flex items-center gap-2 justify-center">
+        <div className="w-full max-w-lg bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in"
+             style={{ maxHeight: "90vh", overflowY: "auto" }}>
+          <div className="mb-2 flex items-center gap-2 justify-center">
             <School className="size-8 text-primary animate-bounce-slow" />
             <span className="text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 tracking-wider animate-gradient-x">
               SkillAble
@@ -114,41 +168,115 @@ const Register = () => {
                 {registerError.data?.message || registerError.message || "Signup Failed"}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Name</label>
-              <Input
-                type="text"
-                name="name"
-                placeholder="Your name here"
-                className="w-full"
-                value={signupInput.name}
-                onChange={changeInputHandler}
-                required
-              />
+            <div className="flex gap-4">
+              <div className="w-1/2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">First Name</label>
+                <Input
+                  type="text"
+                  name="firstName"
+                  placeholder="First Name"
+                  className="w-full"
+                  value={signupInput.firstName}
+                  onChange={changeInputHandler}
+                  required
+                />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Last Name</label>
+                <Input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last Name"
+                  className="w-full"
+                  value={signupInput.lastName}
+                  onChange={changeInputHandler}
+                  required
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
+              <label>Email</label>
               <Input
                 type="email"
                 name="email"
-                placeholder="Example@gmail.com"
-                className="w-full"
                 value={signupInput.email}
                 onChange={changeInputHandler}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
-              <Input
-                type="password"
-                name="password"
-                placeholder="********"
-                className="w-full"
-                value={signupInput.password}
-                onChange={changeInputHandler}
-                required
-              />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Password</label>
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="********"
+                  className="w-full"
+                  value={signupInput.password}
+                  onChange={changeInputHandler}
+                  required
+                />
+                <button
+                  type="button"
+                  className="text-gray-500 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-[#23232a] hover:bg-gray-100 dark:hover:bg-[#23232a]/80 transition"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {/* Password requirements feedback here */}
+              <div className="mb-2">
+                <div className="border rounded p-3 text-xs bg-white dark:bg-zinc-800">
+                  <div className={passwordRequirements.length ? "text-green-600" : "text-red-600"}>
+                    {passwordRequirements.length ? "✓" : "✗"} At least 8 characters
+                  </div>
+                  <div className={passwordRequirements.atLeastThreeTypes ? "text-green-600" : "text-red-600"}>
+                    {passwordRequirements.atLeastThreeTypes ? "✓" : "✗"} At least 3 of the following:
+                    <ul className="ml-4">
+                      <li className={passwordRequirements.lowercase ? "text-green-600" : "text-red-600"}>
+                        {passwordRequirements.lowercase ? "✓" : "✗"} Lower case letters (a-z)
+                      </li>
+                      <li className={passwordRequirements.uppercase ? "text-green-600" : "text-red-600"}>
+                        {passwordRequirements.uppercase ? "✓" : "✗"} Upper case letters (A-Z)
+                      </li>
+                      <li className={passwordRequirements.number ? "text-green-600" : "text-red-600"}>
+                        {passwordRequirements.number ? "✓" : "✗"} Numbers (0-9)
+                      </li>
+                      <li className={passwordRequirements.special ? "text-green-600" : "text-red-600"}>
+                        {passwordRequirements.special ? "✓" : "✗"} Special characters (e.g. !@#$%^&*)
+                      </li>
+                    </ul>
+                  </div>
+                  <div className={passwordRequirements.noTripleRepeat ? "text-green-600" : "text-red-600"}>
+                    {passwordRequirements.noTripleRepeat ? "✓" : "✗"} No more than 2 identical characters in a row
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Confirm Password</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="********"
+                  className="w-full"
+                  value={signupInput.confirmPassword}
+                  onChange={changeInputHandler}
+                  required
+                />
+                <button
+                  type="button"
+                  className="text-gray-500 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-[#23232a] hover:bg-gray-100 dark:hover:bg-[#23232a]/80 transition"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <div className="flex items-center mt-2">
               <input
@@ -167,6 +295,13 @@ const Register = () => {
                   privacy policy
                 </span>
               </label>
+            </div>
+            <div className="w-full flex justify-center">
+              <ReCAPTCHA
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                theme={isDarkMode ? "dark" : "light"}
+                onChange={token => setRecaptchaToken(token)}
+              />
             </div>
             <Button
               className="w-full transition-transform duration-200 hover:scale-105 hover:shadow-lg"
@@ -232,6 +367,16 @@ const Register = () => {
           .animate-bounce-slow { animation: bounce 2s infinite; }
         `}
       </style>
+
+      {/* Email Confirmation Modal */}
+      <EmailConfirmationModal
+        open={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirm}
+        loading={confirmLoading}
+        email={registeredEmail}
+        onResend={handleResendConfirmation}
+      />
     </div>
   );
 };

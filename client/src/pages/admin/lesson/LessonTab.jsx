@@ -8,7 +8,7 @@ import axios from 'axios';
 import { Loader, Loader2, Trash } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom';
-import { toast, Toaster } from 'sonner';
+import toast from 'react-hot-toast';
 import Input from '@/components/ui/input';
 import CreateQuiz from '../CreateQuiz';
 import { useGetLessonQuizzesQuery, useUpdateQuizMutation } from "@/features/api/quizApi";

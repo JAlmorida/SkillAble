@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const COURSE_API = "http://localhost:8080/api/v1/courses";
+const COURSE_API = "/api/v1/courses";
 
 export const courseApi = createApi({
   reducerPath: "courseApi",
@@ -27,13 +27,20 @@ export const courseApi = createApi({
     }),
     getSearchCourse: builder.query({
       query: ({ searchQuery, categories, sortByLevel }) => {
-        let queryString = `/search?query=${encodeURIComponent(searchQuery)}`;
+        let queryString = "/search";
+        const params = [];
+        if (searchQuery && searchQuery.trim() !== "") {
+          params.push(`query=${encodeURIComponent(searchQuery)}`);
+        }
         if (categories && categories.length > 0) {
           const categoriesString = categories.map(encodeURIComponent).join(",");
-          queryString += `&categories=${categoriesString}`;
+          params.push(`categories=${categoriesString}`);
         }
         if (sortByLevel) {
-          queryString += `&sortByLevel=${encodeURIComponent(sortByLevel)}`;
+          params.push(`sortByLevel=${encodeURIComponent(sortByLevel)}`);
+        }
+        if (params.length > 0) {
+          queryString += "?" + params.join("&");
         }
         return {
           url: queryString,
@@ -75,7 +82,13 @@ export const courseApi = createApi({
       }),
     }),
     searchCourses: builder.query({
-      query: ({ searchQuery }) => `/search?query=${searchQuery}`,
+      query: ({ searchQuery }) => {
+        let url = "/search";
+        if (searchQuery && searchQuery.trim() !== "") {
+          url += `?query=${encodeURIComponent(searchQuery)}`;
+        }
+        return url;
+      },
     }),
   }),
 });

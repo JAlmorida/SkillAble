@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const ENROLL_API = "http://localhost:8080/api/v1/enroll";
+const ENROLL_API = "/api/v1/enroll";
 
 export const enrollApi = createApi({
   reducerPath: "enrollApi",
@@ -36,11 +36,22 @@ export const enrollApi = createApi({
       }),
       providesTags: ["EnrolledCourses"],
     }),
+    unenrollCourse: builder.mutation({
+      query: (courseId) => ({
+        url: `/unenroll/${courseId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, courseId) => [
+        { type: "CourseDetail", id: courseId },
+        "EnrolledCourses"
+      ],
+    }),
   }),
 });
 
 export const {
   useEnrollCourseMutation,
+  useUnenrollCourseMutation,
   useGetCourseDetailWithStatusQuery,
   useGetAllEnrolledCoursesQuery,
 } = enrollApi;

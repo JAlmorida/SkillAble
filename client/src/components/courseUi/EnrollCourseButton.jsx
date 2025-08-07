@@ -2,23 +2,21 @@ import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { useEnrollCourseMutation, useGetAllEnrolledCoursesQuery } from "@/features/api/enrollApi";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useEnrollmentNotifications } from "@/components/context/EnrollmentNotificationProvider";
-import { useJoinCourseGroupChatMutation } from "@/features/api/chatApi";
+import UnenrollCourseButton from "./UnenrollCourseButton"; // Add this import
 
 const MAX_ACTIVE_ENROLLMENTS = 10;
 
-const EnrollCourseButton = ({ courseId, onEnrolled }) => {
+const EnrollCourseButton = ({ courseId, onEnrolled, refetchEnrollment }) => {
   const [enrollCourse, { data, isLoading, isSuccess, isError, error }] = useEnrollCourseMutation();
   const queryResult = useGetAllEnrolledCoursesQuery();
-  const { data: enrolledData, refetch, status } = queryResult;
+  const { data: enrolledData, refetch } = queryResult;
   const [activeCount, setActiveCount] = useState(0);
   const navigate = useNavigate();
-  const { addEnrollmentNotification, enrollmentNotifications } = useEnrollmentNotifications();
-  console.log("addEnrollmentNotification:", addEnrollmentNotification);
+  const { addEnrollmentNotification } = useEnrollmentNotifications();
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [joinGroupChat] = useJoinCourseGroupChatMutation();
 
   useEffect(() => {
     if (enrolledData && typeof enrolledData.activeEnrollmentCount === "number") {
@@ -28,18 +26,20 @@ const EnrollCourseButton = ({ courseId, onEnrolled }) => {
 
   useEffect(() => {
     if (enrolledData && enrolledData.enrolledCourses) {
-      setIsEnrolled(enrolledData.enrolledCourses.some(course => course._id === courseId));
+      const enrolled = enrolledData.enrolledCourses.some(course => 
+        course._id === courseId || 
+        course.id === courseId || 
+        course === courseId
+      );
+      setIsEnrolled(enrolled);
     }
   }, [enrolledData, courseId]);
 
   const enrollCourseHandler = async () => {
     const result = await enrollCourse(courseId);
     if (result.data && !result.error) {
-      try {
-        await joinGroupChat(courseId).unwrap();
-      } catch (e) {
-        // Ignore error if already a member
-      }
+      // Backend now automatically adds users to group chat on enrollment
+      // No need to call joinGroupChat separately
       addEnrollmentNotification({
         course: { title: "Course Title", _id: courseId },
         enrolledAt: new Date().toISOString(),
@@ -48,6 +48,13 @@ const EnrollCourseButton = ({ courseId, onEnrolled }) => {
       });
     }
     if (onEnrolled) await onEnrolled();
+    refetch(); // refetch enrolled courses
+    if (refetchEnrollment) refetchEnrollment(); // refetch course detail
+  };
+
+  const handleUnenrolled = async () => {
+    setIsEnrolled(false);
+    if (onUnenrolled) await onUnenrolled();
   };
 
   useEffect(() => {
@@ -67,24 +74,43 @@ const EnrollCourseButton = ({ courseId, onEnrolled }) => {
   const isMaxed = activeCount >= MAX_ACTIVE_ENROLLMENTS;
 
   return (
-    <Button
-      disabled={isLoading || isMaxed}
-      onClick={enrollCourseHandler}
-      className="w-full bg-black text-white"
-    >
-      {isLoading ? (
+    <div className="space-y-2">
+      {isEnrolled ? (
         <>
-          <Loader2 className="mr-2 h-4 animate-spin" />
-          Please Wait
+          {/* Continue Course Button */}
+          <Button
+            onClick={() => navigate(`/course-progress/${courseId}`)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Continue Course
+          </Button>
+          {/* Separate Unenroll Course Button */}
+          <UnenrollCourseButton 
+            courseId={courseId} 
+            onUnenrolled={handleUnenrolled}
+            refetchEnrollment={refetchEnrollment}
+          />
         </>
-      ) : isMaxed ? (
-        "Enrollment reached the limit. Finish a course first."
-      ) : isEnrolled ? (
-        "Continue to Course"
       ) : (
-        "Enroll Course"
+        /* Enroll Course Button */
+        <Button
+          disabled={isLoading || isMaxed}
+          onClick={enrollCourseHandler}
+          className="w-full bg-black text-white"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 animate-spin" />
+              Please Wait
+            </>
+          ) : isMaxed ? (
+            "Enrollment reached the limit. Finish a course first."
+          ) : (
+            "Enroll Course"
+          )}
+        </Button>
       )}
-    </Button>
+    </div>
   );
 };
 

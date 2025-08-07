@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForgotPasswordMutation } from "@/features/api/authApi";
 
 const Modal = ({ open, onClose, title, children }) => {
@@ -24,13 +24,40 @@ const ForgotPasswordModal = ({ open, onClose }) => {
   const [email, setEmail] = useState("");
   const [forgotPassword, { isLoading, isSuccess, error }] = useForgotPasswordMutation();
 
+  // 30-second resend timer state
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const timerRef = useRef();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (resendCooldown > 0) return;
     await forgotPassword(email);
+    setResendCooldown(30); // Start 30s timer
   };
 
-  React.useEffect(() => {
-    if (!open) setEmail("");
+  // Countdown effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      timerRef.current = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [resendCooldown]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setEmail("");
+      setResendCooldown(0);
+      clearInterval(timerRef.current);
+    }
   }, [open]);
 
   return (
@@ -47,9 +74,13 @@ const ForgotPasswordModal = ({ open, onClose }) => {
         <button
           type="submit"
           className="bg-blue-600 text-white rounded-md px-4 py-2 font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
-          disabled={isLoading}
+          disabled={isLoading || resendCooldown > 0}
         >
-          {isLoading ? "Sending..." : "Send Reset Link"}
+          {isLoading
+            ? "Sending..."
+            : resendCooldown > 0
+              ? `Wait ${resendCooldown}s`
+              : "Send Reset Link"}
         </button>
         {isSuccess && (
           <p className="text-green-600 dark:text-green-400 text-center">

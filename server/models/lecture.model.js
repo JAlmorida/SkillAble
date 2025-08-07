@@ -1,29 +1,27 @@
 import mongoose from "mongoose";
 
 const lectureSchema = new mongoose.Schema({
-  lectureTitle:{
-    type:String,
-    required:true,
+  lectureTitle: {
+    type: String,
+    required: true,
   },
-  lectureSubtitle:{type:String},
-  videoUrl:{ type:String },
-  publicId:{ type:String },
+  lectureSubtitle: { type: String },
   isFinished: {
-    type:Boolean, 
-    default:false, 
+    type: Boolean,
+    default: false,
   },
-  lessons:[
+  lessons: [
     {
-      type:mongoose.Schema.Types.ObjectId,
-      ref: "Lesson"
-    }
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lesson",
+    },
   ],
   quizzes: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quiz"
-    }
-  ]
+      ref: "Quiz",
+    },
+  ],
 },{timestamps:true});
 
-export const Lecture = mongoose.model("Lecture",lectureSchema);
+export const Lecture = mongoose.model("Lecture", lectureSchema);

@@ -97,7 +97,19 @@ const ZoomControls = () => {
         </div>
         {/* Show controls in the settings card when enabled */}
         {isZoomEnabled && (
-          <ZoomControlsPanel zoomLevel={zoomLevel} updateZoomLevel={updateZoomLevel} />
+          <>
+            <ZoomControlsPanel zoomLevel={zoomLevel} updateZoomLevel={updateZoomLevel} />
+            {/* Keyboard shortcuts info */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <h4 className="font-medium text-sm mb-2">Keyboard Shortcuts:</h4>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd + M</kbd> - Toggle Zoom</div>
+                <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Alt + +</kbd> - Zoom In</div>
+                <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Alt + -</kbd> - Zoom Out</div>
+                <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Alt + 0</kbd> - Reset Zoom</div>
+              </div>
+            </div>
+          </>
         )}
       </div>
       {/* Only show the floating panel if both zoom is enabled and the panel is not closed */}

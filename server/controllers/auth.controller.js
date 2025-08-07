@@ -4,13 +4,31 @@ import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 import { upsertStreamUser } from "../utils/stream.js";
+import sgMail from '@sendgrid/mail';
+import { sendPasswordResetEmail, sendEmailConfirmation } from '../utils/email.js';
+import axios from "axios";
+import { PendingUser } from "../models/pendingUser.model.js";
 
 export const register = async (req, res) => {
+  const { recaptchaToken, ...otherFields } = req.body;
+
+  // 1. Verify reCAPTCHA
+  const secret = process.env.RECAPTCHA_SECRET_KEY;
+  const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${recaptchaToken}`;
   try {
-    const { name, email, password, confirmPassword, gender } = req.body;
+    const { data } = await axios.post(verifyUrl);
+    if (!data.success) {
+      return res.status(400).json({ success: false, message: "reCAPTCHA failed. Please try again." });
+    }
+  } catch (err) {
+    return res.status(400).json({ success: false, message: "reCAPTCHA verification error." });
+  }
+
+  try {
+    const { firstName, lastName, email, password, confirmPassword } = req.body;
 
     // Validate required fields
-    if (!name || !email || !password) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       return res.status(400).json({
         success: false,
         message: "All fields are required.",
@@ -26,37 +44,55 @@ export const register = async (req, res) => {
       });
     }
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
+    // Check if pending user exists
+    const existingPending = await PendingUser.findOne({ email });
+    if (existingPending) {
+      return res.status(409).json({
         success: false,
-        message: "User already exist with this email.",
+        pendingConfirmation: true,
+        message: "A confirmation code has already been sent to this email. Please check your spam.",
+        email: existingPending.email,
       });
     }
 
     // Generate random avatar
     const idx = Math.floor(Math.random() * 100) + 1;
-    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png?username=${name}`;
+    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png?username=${firstName}`;
 
-    const newUser = await User.create({
-      name,
+    const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const confirmationExpires = Date.now() + 1000 * 60 * 10; // 10 minutes
+
+    const pendingUser = await PendingUser.create({
+      firstName,
+      lastName,
       email,
-      password, // plain password, let the model hash it
-      photoUrl: randomAvatar,
+      password,
+      confirmationCode,
+      confirmationExpires,
+      // You can add photoUrl if you want to keep it for later
     });
 
-    try {
-      const result = await upsertStreamUser({
-        id: newUser._id.toString(),
-        name: newUser.name,
-        email: newUser.email,
-      });
-      console.log("Upserted user to Stream:", result);
-      console.log(`Stream user created for ${newUser.name}`);
-    } catch (error) {
-      console.log("Error creating Stream user:", error);
+    // Email send limit logic...
+    const now = new Date();
+    if (pendingUser.confirmationEmailLastSentAt && pendingUser.confirmationEmailSendCount >= 3) {
+      const diff = (now - pendingUser.confirmationEmailLastSentAt) / (1000 * 60); // minutes
+      if (diff < 30) {
+        return res.status(429).json({
+          message: "You have reached the limit of 3 confirmation emails. Please try again after 30 minutes.",
+        });
+      } else {
+        // Reset count after 30 minutes
+        pendingUser.confirmationEmailSendCount = 0;
+      }
     }
+
+    // Update send count and last sent time
+    pendingUser.confirmationEmailSendCount = (pendingUser.confirmationEmailSendCount || 0) + 1;
+    pendingUser.confirmationEmailLastSentAt = now;
+    await pendingUser.save();
+
+    // Send confirmation email
+    await sendEmailConfirmation(pendingUser.email, confirmationCode);
 
     return res.status(201).json({
       success: true,
@@ -95,13 +131,15 @@ export const login = async (req, res) => {
       });
     }
 
-    await upsertStreamUser({
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-    });
+    // --- Approval check ---
+    if (!user.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is pending admin approval. Please wait for an admin to approve your account, Please check you spam category in email for more updates.",
+      });
+    }
 
-    generateToken(res, user, `Welcome back ${user.name}`);
+    generateToken(res, user, `Welcome ${user.firstName} ${user.lastName}`);
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -125,84 +163,46 @@ export const logout = async (_, res) => {
   }
 };
 
-export const onboard = async (req, res) => {
-  try {
-    const userId = req.user._id
-    const { name, bio } = req.body;
-
-    if (!name || !bio) {
-      return res.status(400).json({
-        message: "All fields required",
-        missingFields: [!name && "name", !bio && "bio"].filter(Boolean),
-      });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        ...req.body,
-        isOnboarded: true,
-      },
-      { new: true }
-    );
-
-    if (!updatedUser)
-      return res.status(404).json({ meesage: "User not found " });
-
-    try {
-      const result = await upsertStreamUser({
-        id: updatedUser._id.toString(),
-        name: updatedUser.name,
-        email: updatedUser.email,
-      });
-      console.log("Upserted user to Stream:", result);
-      console.log(
-        `Stream user updated after onboarding for ${updatedUser.name}`
-      );
-    } catch (error) {
-      console.log("Error upserting Stream user:", error);
-    }
-    res.status(200).json({
-      success: true,
-      user: updatedUser,
-    });
-  } catch (error) {
-    console.error("Onboaring Error", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-// 1. Forgot Password (send email)
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // --- Email sending limit logic ---
+  const now = new Date();
+  if (user.resetEmailLastSentAt && user.resetEmailSendCount >= 3) {
+    const diff = (now - user.resetEmailLastSentAt) / (1000 * 60); // minutes
+    if (diff < 30) {
+      return res.status(429).json({
+        message: "You have reached the limit of 3 reset emails. Please try again after 30 minutes.",
+      });
+    } else {
+      user.resetEmailSendCount = 0;
+    }
+  }
+
   // Generate token
   const resetToken = crypto.randomBytes(32).toString("hex");
   user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
   user.resetPasswordExpire = Date.now() + 1000 * 60 * 60; // 1 hour
+
+  // Update email send count and last sent time
+  user.resetEmailSendCount = (user.resetEmailSendCount || 0) + 1;
+  user.resetEmailLastSentAt = now;
   await user.save();
 
-  // Send email
-  const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
-  const transporter = nodemailer.createTransport({
-    service: "gmail", // or your SMTP provider
-    auth: {
-      user: process.env.EMAIL_USER, 
-      pass: process.env.EMAIL_PASS, 
-    },
-  });
-  await transporter.sendMail({
-    to: user.email, // recipient is the user's email from DB
-    subject: "Password Reset",
-    html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link will expire in 1 hour.</p>`,
-  });
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-  res.json({ message: "Password reset link sent to your email." });
+  try {
+    await sendPasswordResetEmail(user.email, resetUrl);
+    res.json({ message: "Password reset link sent to your email." });
+  } catch (err) {
+    console.error("Error sending reset email:", err);
+    res.status(500).json({ message: "Failed to send reset email. Please try again later." });
+  }
 };
 
-// 2. Reset Password (set new password)
 export const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
@@ -219,5 +219,99 @@ export const resetPassword = async (req, res) => {
   await user.save();
 
   res.json({ message: "Password reset successful" });
+};
+
+export const confirmEmail = async (req, res) => {
+  try {
+    const email = req.body.email.trim().toLowerCase();
+    const { code } = req.body;
+  const pendingUser = await PendingUser.findOne({ email });
+
+  if (!pendingUser) return res.status(404).json({ message: "No pending registration found." });
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      await PendingUser.deleteOne({ email });
+      return res.status(400).json({ message: "A user with this email already exists. Please log in." });
+    }
+
+  if (
+    pendingUser.confirmationCode === code &&
+    pendingUser.confirmationExpires > Date.now()
+  ) {
+    const newUser = await User.create({
+      firstName: pendingUser.firstName,
+      lastName: pendingUser.lastName,
+      email: pendingUser.email,
+      password: pendingUser.password,
+      // ...any other fields...
+    });
+
+      // --- UPSERT TO STREAM HERE ---
+      await upsertStreamUser({
+        id: newUser._id.toString(),
+        name: `${newUser.firstName} ${newUser.lastName}`,
+        email: newUser.email,
+      });
+
+    await PendingUser.deleteOne({ email });
+    return res.json({ success: true, message: "Email confirmed! Account created." });
+  } else {
+    return res.status(400).json({
+      message: "Invalid or expired code. Please request a new confirmation code.",
+    });
+    }
+  } catch (error) {
+    console.error("Error in confirmEmail:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const resendConfirmation = async (req, res) => {
+  const email = req.body.email.trim().toLowerCase();
+  const pendingUser = await PendingUser.findOne({ email });
+  if (!pendingUser) return res.status(404).json({ message: "Pending user not found" });
+
+  // --- Email sending limit logic ---
+  const now = new Date();
+  if (pendingUser.confirmationEmailLastSentAt && pendingUser.confirmationEmailSendCount >= 3) {
+    const diff = (now - pendingUser.confirmationEmailLastSentAt) / (1000 * 60); // minutes
+    if (diff < 30) {
+      return res.status(429).json({
+        message: "You have reached the limit of 3 confirmation emails. Please try again after 30 minutes.",
+      });
+    } else {
+      pendingUser.confirmationEmailSendCount = 0;
+    }
+  }
+
+  // Generate new code and expiry
+  const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingUser.confirmationCode = confirmationCode;
+  pendingUser.confirmationExpires = Date.now() + 1000 * 60 * 10; // 10 min
+
+  // Update send count and last sent time
+  pendingUser.confirmationEmailSendCount = (pendingUser.confirmationEmailSendCount || 0) + 1;
+  pendingUser.confirmationEmailLastSentAt = now;
+  await pendingUser.save();
+
+  // Send email
+  await sendEmailConfirmation(pendingUser.email, confirmationCode);
+
+  res.json({ message: "Confirmation code resent. Please check your spam" });
+};
+
+export const validateResetToken = async (req, res) => {
+  const { token } = req.params;
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+  if (!user) {
+    return res.status(400).json({ valid: false, message: "Invalid or expired token" });
+  }
+  return res.json({ valid: true, expiresAt: user.resetPasswordExpire });
 };
 

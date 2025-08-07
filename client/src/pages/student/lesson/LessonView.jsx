@@ -13,7 +13,7 @@ import { removeColorStyles } from '@/utils/htmlSanitizer';
 import { CheckCircle, CheckCircle2, ArrowLeft, BookOpen } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import PageLoader from '@/components/loadingUi/PageLoader';
 import VideoWithCaption from '@/components/video/VideoWithCaption';
 import FileCard from '@/components/lessonUi/FileCard';

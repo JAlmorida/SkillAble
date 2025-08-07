@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useGetCourseProgressQuery } from '@/features/api/courseProgressApi';
+import { getLetterGrade, getGradeColor } from '@/lib/utils';
 
 const QuizResults = () => {
     const location = useLocation();
@@ -32,6 +33,10 @@ const QuizResults = () => {
         );
     }
 
+    const percentage = Math.round((score / total) * 100);
+    const letterGrade = getLetterGrade(percentage);
+    const gradeColor = getGradeColor(letterGrade);
+
     return (
         <div className="p-4 relative min-h-[80vh]">
             <h1 className="text-2xl font-bold mb-4">Quiz Results</h1>
@@ -41,11 +46,11 @@ const QuizResults = () => {
                 <CardContent className="p-4">
                     <div className="text-center">
                         <h2 className="text-xl font-semibold mb-2">Your Score</h2>
-                        <div className="text-3xl font-bold text-blue-600">
-                            {score} / {total}
+                        <div className={`text-6xl font-bold ${gradeColor} mb-2`}>
+                            {letterGrade}
                         </div>
                         <div className="text-lg text-gray-600">
-                            {Math.round((score / total) * 100)}%
+                            {percentage}%
                         </div>
                     </div>
                 </CardContent>

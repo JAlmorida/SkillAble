@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X, Smartphone, Monitor } from 'lucide-react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 const InstallPWA = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);

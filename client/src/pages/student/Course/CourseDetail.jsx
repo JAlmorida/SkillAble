@@ -1,4 +1,5 @@
 import EnrollCourseButton from "@/components/courseUi/EnrollCourseButton";
+import UnenrollCourseButton from "@/components/courseUi/UnenrollCourseButton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,7 @@ import React, { useEffect, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useGetAuthUserQuery } from "@/features/api/authApi";
-import { useJoinCourseGroupChatMutation, useStreamTokenQuery } from "@/features/api/chatApi";
+import { useStreamTokenQuery } from "@/features/api/chatApi";
 import { StreamChat } from "stream-chat";
 import { Badge } from "@/components/ui/badge";
 import { useGetUserCourseGroupChatsQuery } from "@/features/api/chatApi";
@@ -47,7 +48,10 @@ const CourseDetail = () => {
 
   const { data: groupChatsData } = useGetUserCourseGroupChatsQuery(undefined, { skip: !authUser });
   const groupChatExists = groupChatsData?.groupChats?.some(
-    (gc) => gc.channelId === `course-${courseId}`
+    (gc) => {
+      // Check if this is a course group chat by looking for course-related metadata
+      return gc.courseThumbnail || gc.name?.includes('Course') || gc.name?.includes('Group');
+    }
   );
 
   const checkMembership = async () => {
@@ -101,8 +105,6 @@ const CourseDetail = () => {
     };
   // Add groupChatExists as a dependency!
   }, [authUser, tokenData, courseId, location.key, groupChatExists]);
-
-  const [joinGroupChat, { isLoading: joining }] = useJoinCourseGroupChatMutation();
 
   const handleContinueCourse = () => {
     if(enrolled){
@@ -199,27 +201,52 @@ const CourseDetail = () => {
                     >
                       Continue Course
                     </Button>
-                    <CourseGroupChatButton key={refreshKey} courseId={courseId} enrolled={enrolled} />
+                    <UnenrollCourseButton
+                      courseId={courseId}
+                      onUnenrolled={handleAfterEnroll}
+                      refetchEnrollment={refetchEnrollment}
+                    />
                   </>
                 ) : (
-                  <EnrollCourseButton courseId={courseId} onEnrolled={handleAfterEnroll} />
+                  <EnrollCourseButton
+                    courseId={courseId}
+                    onEnrolled={handleAfterEnroll}
+                    refetchEnrollment={refetchEnrollment}
+                  />
                 )}
+                <CourseGroupChatButton key={refreshKey} courseId={courseId} enrolled={enrolled} />
               </div>
             </div>
 
             {/* Video */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="aspect-video bg-slate-900">
-                {course?.lectures?.[0]?.videoUrl ? (
-                  <VideoWithCaption videoUrl={course.lectures[0].videoUrl} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-400">
-                    <div className="text-center">
-                      <PlayCircle size={48} className="mx-auto mb-2 opacity-50" />
-                      <p>No Preview Available</p>
+                {(() => {
+                  // Find the first lesson with a videoUrl across all lectures
+                  let firstLessonWithVideo = null;
+                  if (course?.lectures) {
+                    for (const lecture of course.lectures) {
+                      if (lecture.lessons && lecture.lessons.length > 0) {
+                        const lessonWithVideo = lecture.lessons.find(lesson => lesson.videoUrl);
+                        if (lessonWithVideo) {
+                          firstLessonWithVideo = lessonWithVideo.videoUrl;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                  
+                  return firstLessonWithVideo ? (
+                    <VideoWithCaption videoUrl={firstLessonWithVideo} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                      <div className="text-center">
+                        <PlayCircle size={48} className="mx-auto mb-2 opacity-50" />
+                        <p>No Preview Available</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           </div>

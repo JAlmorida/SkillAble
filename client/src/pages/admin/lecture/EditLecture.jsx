@@ -1,26 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { useEditLectureMutation, useGetLectureByIdQuery, useRemoveLectureMutation } from "@/features/api/lectureApi";
-import axios from "axios";
 import { Loader2, ArrowLeft, ChevronLeft } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import CreateLesson from "../lesson/CreateLesson";
 import Input from "@/components/ui/input";
-
-const MEDIA_API = "http://localhost:8080/api/v1/media";
 
 const EditLecture = () => {
   const [input, setInput] = useState({
     title: "",
     subtitle: "",
   });
-  const [uploadVideoInfo, setUploadVideoInfo] = useState(null);
-  const [mediaProgress, setMediaProgress] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [btnDisable, setBtnDisable] = useState(true);
   const params = useParams();
   const { courseId, lectureId } = params;
   const navigate = useNavigate();
@@ -34,7 +26,6 @@ const EditLecture = () => {
         title: lecture.lectureTitle,
         subtitle: lecture.lectureSubtitle
       });
-      setUploadVideoInfo(lecture.videoInfo);
     }
   }, [lecture]);
 
@@ -45,51 +36,10 @@ const EditLecture = () => {
     { data: removeData, isLoading: removeLoading, isSuccess: removeSuccess },
   ] = useRemoveLectureMutation();
 
-  const fileChangeHandler = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const formData = new FormData();
-      formData.append("file", file);
-      setMediaProgress(true);
-      try {
-        const res = await axios.post(`${MEDIA_API}/upload-video`, formData, {
-          onUploadProgress: ({ loaded, total }) => {
-            setUploadProgress(Math.round((loaded * 100) / total));
-          },
-        });
-
-        if (res.data && res.data.success && res.data.data && res.data.data.secure_url) {
-          const videoUrl = res.data.data.secure_url;
-          setUploadVideoInfo({
-            videoUrl,
-            publicId: res.data.data.publicId,
-          });
-          setBtnDisable(false);
-          toast.success(res.data.message);
-
-          // Trigger caption generation with the secure URL
-          try {
-            await axios.post('/api/caption', { videoUrl });
-            toast.success('Caption generation started!');
-          } catch {
-            toast.error('Failed to start caption generation');
-          }
-        } else {
-          toast.error("Video upload failed: Missing video URL in response.");
-        }
-      } catch (error) {
-        toast.error("Video upload failed");
-      } finally {
-        setMediaProgress(false);
-      }
-    }
-  };
-
   const editLectureHandler = async () => {
     await editLecture({
       lectureTitle: input.title,
       lectureSubtitle: input.subtitle,
-      videoInfo: uploadVideoInfo,
       courseId,
       lectureId,
     });
@@ -118,7 +68,7 @@ const EditLecture = () => {
     <div className="w-full py-8 px-2">
       <div className="mb-6">
         <button
-          onClick={() => navigate(`/admin/course/${courseId}/lecture`)}
+          onClick={() => navigate(`/author/course/${courseId}/lecture`)}
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-transparent text-blue-600 font-semibold focus:outline-none active:bg-transparent"
           title="Back to Lectures"
           type="button"
@@ -141,24 +91,7 @@ const EditLecture = () => {
             placeholder="Your lecture title here"
           />
         </div>
-        <div className="space-y-2">
-          <Label>
-            Video<span className="text-red-500">*</span>
-          </Label>
-          <Input
-            type="file"
-            onChange={fileChangeHandler}
-            accept="video/*"
-            placeholder="Your lecture title here"
-            className="w-fit"
-          />
-          {mediaProgress && (
-            <div className="my-4">
-              <Progress value={uploadProgress} />
-              <p>{uploadProgress}% uploaded</p>
-            </div>
-          )}
-        </div>
+
         <div className="space-y-2">
           <Label className="mb-4">Subtitle</Label>
           <Input

@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { userLoggedIn, userLoggedOut } from "../authSlice";
 
-const AUTH_API = "http://localhost:8080/api/auth/";
+const AUTH_API = "/api/auth/";
 
 export const authApi = createApi({
   reducerPath: "authApi",
@@ -74,6 +74,26 @@ export const authApi = createApi({
         body: { password },
       }),
     }),
+    resendConfirmation: builder.mutation({
+      query: (email) => ({
+        url: 'resend-confirmation',
+        method: 'POST',
+        body: { email },
+      }),
+    }),
+    confirmEmail: builder.mutation({
+      query: ({ email, code }) => ({
+        url: 'confirm-email',
+        method: 'POST',
+        body: { email, code },
+      }),
+    }),
+    validateResetToken: builder.query({
+      query: (token) => ({
+        url: `validate-reset-token/${token}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -85,4 +105,7 @@ export const {
   useCompleteOnBoardingMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useResendConfirmationMutation,
+  useConfirmEmailMutation,
+  useValidateResetTokenQuery,
 } = authApi;

@@ -11,7 +11,7 @@ import {
 import { CheckCircle2, CirclePlay, ChevronDown, ChevronUp, History, ArrowLeft } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import PageLoader from "@/components/loadingUi/PageLoader";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -102,33 +102,55 @@ const CourseProgress = () => {
   const { courseDetails, progress, completed } = data.data;
   const { courseTitle } = courseDetails;
 
-  // Build a map of completed lessons from progress
+  // Build a map of completed lessons and quizzes from progress
   const lessonProgressMap = {};
+  const quizProgressMap = {};
   progress?.forEach(lectureProgress => {
     lectureProgress.lessonProgress?.forEach(lp => {
       if (lp.completed) lessonProgressMap[lp.lessonId] = true;
     });
+    lectureProgress.quizProgress?.forEach(qp => {
+      if (qp.attempted) quizProgressMap[qp.quizId] = true;
+    });
   });
 
-  // Define lecturesWithCompletion FIRST
+  // Define lecturesWithCompletion FIRST - include quizzes at lesson level
   const lecturesWithCompletion = courseDetails.lectures.map(lecture => ({
     ...lecture,
     lessons: lecture.lessons.map(lesson => ({
       ...lesson,
-      isCompleted: lessonProgressMap[lesson._id] || false
+      isCompleted: lessonProgressMap[lesson._id] || (lesson.quiz && quizProgressMap[lesson.quiz._id]) || false,
+      quiz: lesson.quiz || null
     }))
   }));
 
-  // NOW calculate progress using lecturesWithCompletion
+  // NOW calculate progress using lecturesWithCompletion - include both lessons and their quizzes
   const allLessons = lecturesWithCompletion?.flatMap(lecture => lecture.lessons || []) || [];
   const totalLessons = allLessons.length;
-  const completedLessonsCount = allLessons.filter(lesson => lesson.isCompleted).length;
+  
+  // Check both lesson completion and quiz completion
+  const completedLessonsCount = allLessons.filter(lesson => {
+    // If lesson has a quiz, check if quiz is completed
+    if (lesson.quiz && quizProgressMap[lesson.quiz._id]) {
+      return true;
+    }
+    // Otherwise check lesson completion
+    return lesson.isCompleted;
+  }).length;
 
-  const progressPercent = totalLessons > 0 
-    ? Math.round((completedLessonsCount / totalLessons) * 100)
+  // Count lessons with quizzes that are completed
+  const lessonsWithQuizzes = allLessons.filter(lesson => lesson.quiz);
+  const completedQuizzesCount = lessonsWithQuizzes.filter(lesson => 
+    lesson.quiz && quizProgressMap[lesson.quiz._id]
+  ).length;
+
+  const totalItems = totalLessons;
+  const completedItems = completedLessonsCount;
+  const progressPercent = totalItems > 0 
+    ? Math.round((completedItems / totalItems) * 100)
     : 0;
 
-  // Defensive: check all lessons in lecture for completion
+  // Defensive: check all lessons in lecture for completion (quizzes are part of lessons)
   const isLectureCompleted = (lectureId) => {
     const lecture = lecturesWithCompletion.find(l => l._id === lectureId);
     return lecture?.lessons?.length > 0 && lecture.lessons.every(lesson => lesson.isCompleted);

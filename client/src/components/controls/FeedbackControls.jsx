@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useFeedback } from "../context/FeedbackContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Slider } from "../ui/slider";
@@ -20,8 +20,18 @@ const FeedbackControls = () => {
     voiceEnabled,
     setVoiceEnabled,
     voiceSpeed,
-    setVoiceSpeed
+    setVoiceSpeed,
   } = useFeedback();
+
+  // Auto-enable all sub-features when main feedback is enabled
+  useEffect(() => {
+    if (isEnabled) {
+      setAudioEnabled(true);
+      setVibrationEnabled(true);
+      setVisualEnabled(true);
+      setVoiceEnabled(true);
+    }
+  }, [isEnabled, setAudioEnabled, setVibrationEnabled, setVisualEnabled, setVoiceEnabled]);
 
   // Helper for select toggles
   const selectToggle = (value, setter) => (
@@ -114,6 +124,14 @@ const FeedbackControls = () => {
             <span className="text-xs">{voiceSpeed.toFixed(1)}x</span>
           </div>
         )}
+      </div>
+      
+      {/* Keyboard shortcuts info */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+        <h4 className="font-medium text-sm mb-2">Keyboard Shortcuts:</h4>
+        <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+          <div>• <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd + Alt + H</kbd> - Toggle Haptic Feedback</div>
+        </div>
       </div>
     </div>
   );

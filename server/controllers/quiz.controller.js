@@ -19,7 +19,6 @@ export const createQuiz = async (req, res) => {
             })
         }
 
-        // Ensure maxAttempts is at least 1
         const validatedMaxAttempts = Math.max(1, maxAttempts || 5);
 
         const lesson = await Lessons.findById(lessonId);
@@ -28,6 +27,14 @@ export const createQuiz = async (req, res) => {
                 success: false,
                 message: "Lesson not found"
             })
+        }
+
+        const lecture = await Lecture.findOne({ lessons: lessonId });
+        if (!lecture) {
+            return res.status(404).json({
+                success: false,
+                message: "Lecture not found for this lesson"
+            });
         }
 
         const existingQuiz = await Quiz.findOne({ lesson: lessonId });
@@ -46,8 +53,12 @@ export const createQuiz = async (req, res) => {
             maxAttempts: validatedMaxAttempts,
             creator: user.id,
             lesson: lessonId,
-            courseId
+            courseId,
+            lecture: lecture._id
         });
+
+        // Update the lesson with the quiz reference
+        await Lessons.findByIdAndUpdate(lessonId, { quiz: quiz._id });
 
         return res.status(201).json({
             success: true,
@@ -137,7 +148,6 @@ export const getLessonQuizzes = async (req, res) => {
     try {
         const { lessonId } = req.params;
 
-        //check if lesson exist
         const lesson = await Lessons.findById(lessonId);
         if (!lesson) {
             return res.status(404).json({
@@ -168,6 +178,7 @@ export const getQuizById = async (req, res) => {
         const quiz = await Quiz.findById(quizId)
             .populate("creator", "name email")
             .populate("lesson", "lessonTitle")
+            .populate("lecture", "lectureTitle");
 
         if (!quiz) {
             return res.status(404).json({
@@ -429,7 +440,10 @@ export const getInProgressAttempt = async (req, res) => {
   const { quizId } = req.params;
   const userId = req.user.id;
   const attempt = await Attempt.findOne({ userId, quizId, status: 'in-progress' });
-  res.json(attempt);
+  if (!attempt) {
+    return res.status(200).json({ success: true, data: null });
+  }
+  return res.status(200).json({ success: true, data: attempt });
 };
 
 export const submitQuizAttempt = async (req, res) => {
@@ -438,14 +452,8 @@ export const submitQuizAttempt = async (req, res) => {
         const { answers } = req.body;
         const userId = req.id;
 
-        console.log("=== SUBMIT QUIZ DEBUG ===");
-        console.log("Request params:", req.params);
-        console.log("Request body:", req.body);
-        console.log("User ID from token:", userId);
-
         // Check if user is authenticated
         if (!userId) {
-            console.log("ERROR: No user ID found in request");
             return res.status(401).json({ 
                 message: "Authentication required",
                 error: "No user ID found"
@@ -454,12 +462,6 @@ export const submitQuizAttempt = async (req, res) => {
 
         // Find the attempt
         const attempt = await Attempt.findById(attemptId);
-        console.log("Found attempt:", attempt ? {
-            _id: attempt._id,
-            userId: attempt.userId,
-            quizId: attempt.quizId,
-            status: attempt.status
-        } : "NOT FOUND");
 
         if (!attempt) {
             return res.status(404).json({ message: "Attempt not found" });
@@ -468,14 +470,8 @@ export const submitQuizAttempt = async (req, res) => {
         // FIX: Convert both to strings for comparison
         const tokenUserIdString = userId.toString();
         const attemptUserIdString = attempt.userId.toString();
-        
-        console.log("Comparing user IDs:");
-        console.log("Token user ID (string):", tokenUserIdString);
-        console.log("Attempt user ID (string):", attemptUserIdString);
-        console.log("Are they equal?", tokenUserIdString === attemptUserIdString);
 
         if (tokenUserIdString !== attemptUserIdString) {
-            console.log("ERROR: User ID mismatch - forbidden access");
             return res.status(403).json({ 
                 message: "Not authorized to submit this attempt",
                 error: "User ID mismatch",
@@ -485,18 +481,15 @@ export const submitQuizAttempt = async (req, res) => {
         }
 
         // Get quiz details
-        const quiz = await Quiz.findById(attempt.quizId);
+        const quiz = await Quiz.findById(attempt.quizId).populate('lesson');
         if (!quiz) {
-            console.error("Quiz not found for attempt:", attempt.quizId);
             return res.status(404).json({ message: "Quiz not found" });
         }
 
         // FIX: Get questions separately (not populated)
         const questions = await Question.find({ quizId: attempt.quizId });
-        console.log("Found questions:", questions.length);
 
         if (!questions || questions.length === 0) {
-            console.error("No questions found for quiz:", attempt.quizId);
             return res.status(404).json({ message: "No questions found for this quiz" });
         }
 
@@ -516,28 +509,18 @@ export const submitQuizAttempt = async (req, res) => {
 
         const score = Math.round((correctAnswers / totalQuestions) * 10);
 
-        console.log("Quiz scoring:", { correctAnswers, totalQuestions, score });
-
         // Update attempt with final data
         attempt.answers = answers;
         attempt.score = score;
         attempt.status = "completed";
         attempt.completedAt = new Date();
         await attempt.save();
-        const fresh = await Attempt.findById(attemptId);
-        console.log("DB after save:", fresh);
-
-        console.log("Attempt updated:", { attemptId, score, status: attempt.status });
 
         // Mark all other in-progress attempts as completed
         await Attempt.updateMany(
           { userId, quizId: attempt.quizId, status: "in-progress", _id: { $ne: attempt._id } },
           { $set: { status: "completed", completedAt: new Date() } }
         );
-
-        // Log all attempts for this user/quiz after update
-        const allAttempts = await Attempt.find({ userId, quizId: attempt.quizId });
-        console.log("All attempts after update:", allAttempts);
 
         // Update course progress
         const courseProgress = await CourseProgress.findOne({ 
@@ -548,12 +531,12 @@ export const submitQuizAttempt = async (req, res) => {
         if (courseProgress) {
             // Find or create lectureProgress
             let lectureProgress = courseProgress.lectureProgress.find(
-                lp => lp.lectureId && quiz.lectureId && lp.lectureId.toString() === quiz.lectureId.toString()
+                lp => lp.lectureId && quiz.lecture && lp.lectureId.toString() === quiz.lecture.toString()
             );
 
             if (!lectureProgress) {
                 lectureProgress = {
-                    lectureId: quiz.lectureId,
+                    lectureId: quiz.lecture,
                     completed: false,
                     lessonProgress: [],
                     quizProgress: []
@@ -600,18 +583,40 @@ export const submitQuizAttempt = async (req, res) => {
             }
 
             // Check if lecture is completed
-            const totalLessons = lectureProgress.lessonProgress.length;
-            const totalQuizzes = lectureProgress.quizProgress.length;
+            // Get actual totals from the database, not from progress arrays
+            const lecture = await Lecture.findById(quiz.lecture).populate('lessons');
+            
+            if (!lecture) {
+                return res.status(404).json({ message: "Lecture not found" });
+            }
+            
+            const actualTotalLessons = lecture.lessons.length;
+            const actualTotalQuizzes = await Quiz.countDocuments({ lecture: quiz.lecture });
+            
             const completedLessons = lectureProgress.lessonProgress.filter(lp => lp.completed).length;
             const completedQuizzes = lectureProgress.quizProgress.filter(qp => qp.attempted).length;
 
-            lectureProgress.completed = (completedLessons === totalLessons) && (completedQuizzes === totalQuizzes);
+            lectureProgress.completed = (completedLessons === actualTotalLessons) && (completedQuizzes === actualTotalQuizzes);
 
             // Check if course is completed
-            courseProgress.completed = courseProgress.lectureProgress.every(lp => lp.completed);
+            // Get all lectures in the course and check if all are completed
+            const course = await Course.findById(quiz.courseId).populate('lectures');
+            const allLectureIds = course.lectures.map(l => l._id.toString());
+            
+            // Create a map of lecture progress for quick lookup
+            const lectureProgressMap = new Map();
+            courseProgress.lectureProgress.forEach(lp => {
+              lectureProgressMap.set(lp.lectureId.toString(), lp);
+            });
+            
+            // Check if all lectures are completed
+            courseProgress.completed = allLectureIds.length > 0 && 
+              allLectureIds.every(lectureId => {
+                const lectureProgress = lectureProgressMap.get(lectureId);
+                return lectureProgress && lectureProgress.completed;
+              });
 
             await courseProgress.save();
-            console.log("Course progress updated");
         }
 
         // Return the result with score

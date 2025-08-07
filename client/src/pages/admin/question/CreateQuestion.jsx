@@ -6,7 +6,7 @@ import { setEdit, setQuiz } from '@/features/quizSlice';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 const CreateQuestion = () => {
   const { quiz } = useSelector(state => state.quiz);
@@ -25,7 +25,7 @@ const CreateQuestion = () => {
   const questions = questionsData?.data || [];
 
   const finishHandler = () => {
-    navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/edit`);
+    navigate(`/author/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/edit`);
     dispatch(setQuiz(null));
     dispatch(setEdit(false));
   };
@@ -41,7 +41,7 @@ const CreateQuestion = () => {
 
   useEffect(() => {
     if (!quiz) {
-      navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quizId}`);
+      navigate(`/author/course/${courseId}/lecture/${lectureId}/lesson/${lessonId}/quiz/${quizId}`);
     }
   }, [quiz, navigate, courseId, lectureId, lessonId, quizId]);
 

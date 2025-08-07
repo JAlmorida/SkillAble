@@ -7,9 +7,6 @@ export const ProtectedRoute = ({children}) => {
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
-  if (user && !user.isOnboarded) {
-    return <Navigate to="/onboarding" />;
-  }
   return children;
 }
 
@@ -34,15 +31,15 @@ export const AdminRoute = ({children}) => {
   return children;
 }
 
-export const OnboardingRoute = ({ children }) => {
-  const { user, isAuthenticated } = useSelector(store => store.auth);
+// Author-only route protection
+export const AuthorRoute = ({children}) => {
+  const {user, isAuthenticated} = useSelector(store=>store.auth);
 
-  // Only allow access if authenticated and NOT onboarded
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+  if(!isAuthenticated){
+    return <Navigate to="/login"/>
   }
-  if (user && user.isOnboarded) {
-    return <Navigate to="/" />;
+  if(user.role !== "author"){
+    return <Navigate to="/"/>
   }
   return children;
-};
+}

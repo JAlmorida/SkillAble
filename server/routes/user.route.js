@@ -2,6 +2,7 @@ import express from "express";
 import { changeUserRole, getAllUsers, getSettings, getUserEnrollmentDetails, getUserProfile, updateProfile, updateSettings } from "../controllers/user.controller.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
 import upload from "../utils/multer.js";
+import { approveUser, rejectUser } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
@@ -14,6 +15,9 @@ router.route("/profile/update").put(isAuthenticated, upload.single("profilePictu
 router.route("/admin/users").get(isAuthenticated, getAllUsers);
 router.route("/admin/users/:userId/enrollments").get(isAuthenticated, getUserEnrollmentDetails)
 router.route("/change-role").patch(isAuthenticated, changeUserRole)
+
+router.patch('/users/:id/approve', approveUser);
+router.delete('/users/:id/reject', rejectUser);
 
 router.route("/settings").get(isAuthenticated, getSettings);
 router.route("/settings").post(isAuthenticated, updateSettings);

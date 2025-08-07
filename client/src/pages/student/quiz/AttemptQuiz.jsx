@@ -25,46 +25,45 @@ const AttemptQuiz = () => {
   const { data: courseData } = useGetCourseByIdQuery(courseId);
   const { data: enrollmentData } = useGetCourseDetailWithStatusQuery(courseId);
 
-  // Debug logs
-  console.log("lessonId from query:", lessonId);
-  console.log("courseData:", courseData);
   if (courseData?.course?.lectures) {
     courseData.course.lectures.forEach((lecture, idx) => {
       console.log(`Lecture ${idx}:`, lecture);
     });
   }
-  console.log("quizDetails:", quizDetails);
-  console.log("quizQuestionsData:", quizQuestionsData);
-  console.log("detailsLoading:", detailsLoading, "questionsLoading:", questionsLoading);
 
   const quizQuestions = quizQuestionsData?.data || [];
   const isExpired = enrollmentData?.isExpired;
   const expiresAt = enrollmentData?.expiresAt;
 
-  let lectureId;
-  if (courseData?.course?.lectures && lessonId) {
-    for (const lecture of courseData.course.lectures) {
-      console.log("Checking lecture", lecture._id);
-      console.log("lecture.lessons:", lecture.lessons);
-      if (!Array.isArray(lecture.lessons)) continue;
-      for (const lesson of lecture.lessons) {
-        console.log("Raw lesson value:", lesson);
-        const lessonIdToCompare = lesson._id ? lesson._id.toString() : lesson.toString();
-        console.log("Comparing lessonIdToCompare:", lessonIdToCompare, "to lessonId:", lessonId);
-        if (lessonIdToCompare === lessonId.toString()) {
-          lectureId = lecture._id;
-          break;
-        }
-      }
-      if (lectureId) break;
-    }
-  }
-  console.log("Final resolved lectureId:", lectureId);
+  const quizLectureId = quizDetails?.data?.lecture?._id;
 
   if (!quizId || !courseId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] text-lg text-red-500">
         Invalid quiz or course. Please check the link.
+      </div>
+    );
+  }
+
+  if (!quizLectureId) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] text-lg text-red-500">
+        Quiz lecture information is missing. Please contact support.
+      </div>
+    );
+  }
+
+  console.log("quizId param:", quizId);
+  console.log("quizDetails:", quizDetails);
+  console.log("quizDetails.data:", quizDetails?.data);
+  console.log("quizDetails.data.lecture:", quizDetails?.data?.lecture);
+  console.log("quizLectureId:", quizDetails?.data?.lecture?._id);
+  console.log("DEBUG: build 2025-07-19 13:55");
+
+  if (detailsLoading || !quizDetails?.data || !quizDetails.data.lecture) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] text-lg text-blue-500">
+        Loading quiz...
       </div>
     );
   }
@@ -93,23 +92,7 @@ const AttemptQuiz = () => {
             )}
           </CardHeader>
           <CardContent>
-            {detailsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-              </div>
-            ) : (
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <CardDescription className="text-zinc-500 dark:text-zinc-300 text-base">
-                  {quizDetails?.data?.description}
-                </CardDescription>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quiz Content */}
-        {detailsLoading || questionsLoading || !lectureId || !lessonId ? (
+            {detailsLoading || questionsLoading || !quizLectureId || !lessonId ? (
           <Card className="bg-white dark:bg-zinc-900 border-none shadow-lg rounded-2xl">
             <CardContent className="p-8">
               <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
@@ -120,15 +103,17 @@ const AttemptQuiz = () => {
           </Card>
         ) : (
           <QuizQuestion
-            quizDetails={quizDetails?.data}
+                quizDetails={quizDetails.data}
             quizQuestions={quizQuestions}
             courseId={courseId}
             isExpired={isExpired}
             deadline={expiresAt}
-            lectureId={lectureId}
+                lectureId={quizDetails.data.lecture._id}
             lessonId={lessonId}
           />
         )}
+          </CardContent>
+        </Card>
       </div>
     </section>
   );

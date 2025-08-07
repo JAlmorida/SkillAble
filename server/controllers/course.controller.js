@@ -178,6 +178,12 @@ export const editCourse = async (req, res) => {
     } = req.body;
     const thumbnail = req.file;
 
+    // Debug: Log the received values
+    console.log("Received form data:", {
+      courseTitle, subTitle, description, category, courseLevel,
+      expiryEnabled, expiryDuration, expiryUnit, expiryDays
+    });
+
     let course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({
@@ -190,15 +196,15 @@ export const editCourse = async (req, res) => {
         const publicId = course.courseThumbnail.split("/").pop().split(".")[0];
         await deleteMediaFromCloudinary(publicId);
       }
-      courseThumbnail = await uploadMedia(thumbnail.path);
+      courseThumbnail = await uploadMedia(thumbnail);
     }
 
-    // Update expiry fields
+    // Update expiry fields - handle FormData string values
     course.expiryEnabled = expiryEnabled === "true" || expiryEnabled === true;
     if (course.expiryEnabled) {
-      course.expiryDuration = expiryDuration;
-      course.expiryUnit = expiryUnit;
-      course.expiryDays = expiryDays;
+      course.expiryDuration = expiryDuration ? parseInt(expiryDuration) : 365;
+      course.expiryUnit = expiryUnit || "days";
+      course.expiryDays = expiryDays ? parseInt(expiryDays) : 365;
     } else {
       course.expiryDuration = null;
       course.expiryUnit = null;
@@ -206,13 +212,23 @@ export const editCourse = async (req, res) => {
     }
 
     // Update other fields
-    course.courseTitle = courseTitle;
-    course.subTitle = subTitle;
-    course.description = description;
-    course.category = category;
-    course.courseLevel = courseLevel;
+    course.courseTitle = courseTitle || course.courseTitle;
+    course.subTitle = subTitle || course.subTitle;
+    course.description = description || course.description;
+    course.category = category || course.category;
+    course.courseLevel = courseLevel || course.courseLevel;
     if (courseThumbnail?.secure_url) {
       course.courseThumbnail = courseThumbnail.secure_url;
+    }
+
+    // Validate the course before saving
+    const validationError = course.validateSync();
+    if (validationError) {
+      console.error("Course validation error:", validationError);
+      return res.status(400).json({
+        message: "Invalid course data",
+        errors: validationError.errors
+      });
     }
 
     await course.save();
@@ -241,9 +257,10 @@ export const editCourse = async (req, res) => {
       message: "Course updated successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error in editCourse:", error);
     return res.status(500).json({
       message: "Failed to update course, try again",
+      error: error.message
     });
   }
 };
@@ -251,36 +268,31 @@ export const editCourse = async (req, res) => {
 export const getCourseById = async (req, res) => {
   try {
     const { courseId } = req.params;
-
-    const course = await Course.findById(courseId).populate("creator", "name photoUrl");
-    if (!course) {
-      return res.status(404).json({
-        message: "course not found!",
+    const course = await Course.findById(courseId)
+      .populate({
+        path: 'lectures',
+        populate: { path: 'lessons' }
       });
+    console.log("Populated course:", JSON.stringify(course, null, 2));
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
     }
-    return res.status(200).json({
-      course,
-    });
+    return res.status(200).json({ success: true, data: course });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      message: "Failed to get course by id , try again",
-    });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-//publish unpublish course logic
 export const togglePublishCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { publish } = req.query; //true or false
+    const { publish } = req.query; 
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({
         message: "Course not found",
       });
     }
-    //publish status based on query parameter
     course.isPublished = publish === "true";
     await course.save();
 
@@ -301,7 +313,8 @@ export const searchCourses = async (req, res) => {
     const { query, categories, sortByLevel } = req.query;
     let filter = { isPublished: true };
 
-    if (query) {
+    // Only add search filter if query is non-empty
+    if (query && query.trim() !== "") {
       filter.$or = [
         { courseTitle: { $regex: query, $options: 'i' } },
         { subTitle: { $regex: query, $options: 'i' } }
@@ -323,7 +336,7 @@ export const searchCourses = async (req, res) => {
     const courses = await Course.find(filter)
       .populate({ path: "category", select: "name" });
 
-    res.json({ courses }); // <-- THIS IS THE FIX
+    res.json({ courses });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

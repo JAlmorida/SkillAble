@@ -36,8 +36,7 @@ app.use(cors({
     "http://localhost:5173",  // Dev server
     "http://localhost:4173",  // Preview server
     "http://localhost:3000",  // Alternative dev port
-    "http://127.0.0.1:5173",  // Alternative localhost
-    "http://127.0.0.1:4173",  // Alternative localhost
+    "http://170.64.236.0", 
   ],
   credentials: true
 }));
@@ -59,6 +58,6 @@ app.use("/api/v1/categories", categoryRoute)
 app.use('/api', captionRoute);
 app.use('/uploads', express.static(path.join(process.cwd(), 'server', 'uploads')));
 
-app.listen(PORT, () =>{
+app.listen(PORT,'0.0.0.0', () => {
   console.log(`server listening at port ${PORT}`);
 })

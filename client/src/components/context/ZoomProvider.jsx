@@ -1,10 +1,8 @@
 import { useGetSettingsQuery, useUpdateSettingsMutation } from '@/features/api/userApi';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Create the context
 const ZoomContext = createContext();
 
-// Custom hook to use the Zoom context
 export const useZoom = () => {
   const context = useContext(ZoomContext);
   if (!context) {
@@ -13,7 +11,6 @@ export const useZoom = () => {
   return context;
 };
 
-// Provider component
 export const ZoomProvider = ({ children, user }) => {
   const { data: settings, isSuccess } = useGetSettingsQuery(undefined, { skip: !user });
   const [updateSettings] = useUpdateSettingsMutation();
@@ -22,7 +19,6 @@ export const ZoomProvider = ({ children, user }) => {
   const [isZoomEnabled, setIsZoomEnabled] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.5);
 
-  // Load preferences from localStorage on mount
   useEffect(() => {
     const savedZoomEnabled = localStorage.getItem(getKey('zoomEnabled'));
     const savedZoomLevel = localStorage.getItem(getKey('zoomLevel'));
@@ -30,7 +26,6 @@ export const ZoomProvider = ({ children, user }) => {
     if (savedZoomLevel !== null) setZoomLevel(parseFloat(savedZoomLevel));
   }, [user]);
 
-  // Load preferences from backend
   useEffect(() => {
     if (isSuccess && settings) {
       setIsZoomEnabled(settings.zoomEnabled ?? false);
@@ -38,7 +33,6 @@ export const ZoomProvider = ({ children, user }) => {
     }
   }, [isSuccess, settings]);
 
-  // Save preferences to localStorage
   useEffect(() => {
     localStorage.setItem(getKey('zoomEnabled'), JSON.stringify(isZoomEnabled));
   }, [isZoomEnabled, user]);
@@ -47,7 +41,6 @@ export const ZoomProvider = ({ children, user }) => {
     localStorage.setItem(getKey('zoomLevel'), zoomLevel.toString());
   }, [zoomLevel, user]);
 
-  // Persist preferences to backend
   useEffect(() => {
     if (!user || !isSuccess) return;
     updateSettings({
@@ -56,17 +49,45 @@ export const ZoomProvider = ({ children, user }) => {
     });
   }, [isZoomEnabled, zoomLevel, user, isSuccess, updateSettings]);
 
-  // Keyboard shortcut support (Ctrl+M or Cmd+M)
   useEffect(() => {
-    const handleKeyPress = (event) => {
-      if ((event.key === 'M' || event.key === 'm') && (event.ctrlKey || event.metaKey)) {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'M' || event.key === 'm')) {
         event.preventDefault();
-        setIsZoomEnabled(prev => !prev);
+        toggleZoom();
+      }
+      
+      if (event.altKey && event.key === '+') {
+        event.preventDefault();
+        if (isZoomEnabled) {
+          const newLevel = Math.min(zoomLevel + 0.1, 3.0);
+          updateZoomLevel(newLevel);
+        }
+      }
+      
+      if (event.altKey && event.key === '-') {
+        event.preventDefault();
+        if (isZoomEnabled) {
+          const newLevel = Math.max(zoomLevel - 0.1, 0.5);
+          updateZoomLevel(newLevel);
+        }
+      }
+      
+      if (event.altKey && event.key === '0') {
+        event.preventDefault();
+        if (isZoomEnabled) {
+          updateZoomLevel(1.0);
+        }
+      }
+      
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key === 'z') {
+        event.preventDefault();
+        toggleZoom();
       }
     };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isZoomEnabled, zoomLevel]);
 
   const toggleZoom = () => setIsZoomEnabled(prev => !prev);
   const updateZoomLevel = (level) => setZoomLevel(level);

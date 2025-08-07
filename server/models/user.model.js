@@ -3,15 +3,21 @@ import bcrypt from "bcryptjs"; // <-- import bcrypt
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-const userSchema = new mongoose.Schema(
-  {
-    name: {
+const userSchema = new mongoose.Schema({
+  firstName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  lastName: {
       type: String,
       required: true,
+    trim: true,
     },
     email: {
       type: String,
       required: true,
+    unique: true,
     },
     password: {
       type: String,
@@ -19,7 +25,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "admin"],
+    enum: ["student", "admin" ,"author"],
       default: "student",
     },
     enrolledCourses: [
@@ -31,10 +37,6 @@ const userSchema = new mongoose.Schema(
     photoUrl: {
       type: String,
       default: "",
-    },
-    isOnboarded:{
-      type: Boolean, 
-      default: false
     },
     friends:[
       {
@@ -50,11 +52,31 @@ const userSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
+    resetPasswordToken:{
+      type: String
+    },
+    resetPasswordExpire: {
+      type: Date
+    },
+    emailSendCount: { 
+    type: Number, 
+    default: 0 
   },
-  { timestamps: true }
-);
+  emailLastSentAt: { 
+    type: Date 
+  },
+  resetEmailSendCount: { 
+    type: Number, 
+    default: 0 
+  },
+  resetEmailLastSentAt: { 
+    type: Date 
+  },
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
+}, { timestamps: true });
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
@@ -81,14 +103,34 @@ export const forgotPassword = async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
+  // --- Email sending limit logic ---
+  const now = new Date();
+  if (user.resetEmailLastSentAt && user.resetEmailSendCount >= 3) {
+    const diff = (now - user.resetEmailLastSentAt) / (1000 * 60); // minutes
+    if (diff < 30) {
+      return res.status(429).json({
+        message: "You have reached the limit of 3 reset emails. Please try again after 30 minutes.",
+      });
+    } else {
+      // Reset count after 30 minutes
+      user.resetEmailSendCount = 0;
+    }
+  }
+
   // Generate token
   const resetToken = crypto.randomBytes(32).toString("hex");
   user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
   user.resetPasswordExpire = Date.now() + 1000 * 60 * 60; // 1 hour
+
+  // Update email send count and last sent time
+  user.resetEmailSendCount = (user.resetEmailSendCount || 0) + 1;
+  user.resetEmailLastSentAt = now;
   await user.save();
 
   // Send email
-  const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {

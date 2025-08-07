@@ -61,6 +61,7 @@ export const FeedbackProvider = ({ children, user }) => {
   const touchTimerRef = useRef(null);
   const lastInteractionRef = useRef(0);
   const speechSynthRef = useRef(null);
+  const prevInputValueRef = useRef({});
 
   useEffect(() => {
     if (isSuccess && settings) {
@@ -124,6 +125,26 @@ export const FeedbackProvider = ({ children, user }) => {
   useEffect(() => {
     localStorage.setItem(getKey("voiceSpeed"), voiceSpeed.toString());
   }, [voiceSpeed, user]);
+
+  // Keyboard shortcuts implementation in the context
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Ctrl/Cmd + Alt + H to toggle haptic feedback
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key === 'h') {
+        event.preventDefault();
+        toggleFeedback();
+      }
+      
+      // Ctrl/Cmd + Alt + T to trigger test feedback
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key === 't') {
+        event.preventDefault();
+        triggerFeedback();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEnabled]);
 
   // Initialize audio context
   const initAudioContext = () => {
@@ -406,7 +427,69 @@ export const FeedbackProvider = ({ children, user }) => {
     triggerVibration(type);
   };
 
-  // Event handlers
+  // Add this function to get the last character from an input/textarea
+  const getLastInputChar = (e) => {
+    const value = e.target.value;
+    if (value && value.length > 0) {
+      return value[value.length - 1];
+    }
+    return "";
+  };
+
+  // Updated handleKeyDown
+  const handleKeyDown = (e) => {
+    if (voiceEnabled && isEnabled) {
+      // Skip modifier keys when pressed alone
+      if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) {
+        return;
+      }
+
+      // Skip if it's a modifier combination
+      if (e.ctrlKey || e.altKey || e.metaKey) {
+        return;
+      }
+
+      // Initialize keyName with a default value
+      let keyName = "";
+      
+      // Try to get the key name
+      try {
+        keyName = getKeyName(e.key);
+      } catch (error) {
+        console.error('[FeedbackContext] Error getting key name:', error);
+        return;
+      }
+
+      // Fallback for mobile: try to get the last character from input/textarea
+      if (
+        (e.key === "Unidentified" || !e.key) &&
+        (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+      ) {
+        try {
+          keyName = getKeyName(getLastInputChar(e));
+        } catch (error) {
+          console.error('[FeedbackContext] Error getting last input char:', error);
+          return;
+        }
+      }
+
+      if (keyName) {
+        speakText(keyName);
+      }
+    }
+  };
+
+  // New: handleInput for mobile/iPad
+  const handleInput = (e) => {
+    if (voiceEnabled && isEnabled) {
+      const value = e.target.value || "";
+      if (value.length > 0) {
+        const lastChar = value[value.length - 1];
+        speakText(getKeyName(lastChar));
+      }
+    }
+  };
+
   const handleClick = (e) => {
     if (isInteractiveElement(e.target)) {
       provideFeedback(e.target, "click");
@@ -420,11 +503,15 @@ export const FeedbackProvider = ({ children, user }) => {
   };
 
   const handleTouchStart = (e) => {
-    if (isInteractiveElement(e.target)) {
-      touchTimerRef.current = setTimeout(() => {
+    // Only process if feedback is enabled and target is interactive
+    if (!isEnabled || !isInteractiveElement(e.target)) return;
+    
+    // Use requestAnimationFrame to defer the work
+    touchTimerRef.current = setTimeout(() => {
+      requestAnimationFrame(() => {
         provideFeedback(e.target, "hold");
-      }, tapHoldDuration);
-    }
+      });
+    }, tapHoldDuration);
   };
 
   const handleTouchEnd = () => {
@@ -434,37 +521,40 @@ export const FeedbackProvider = ({ children, user }) => {
     }
   };
 
-  // Focus and keyboard interactions
   const handleFocus = (e) => {
     if (isInteractiveElement(e.target)) {
       provideFeedback(e.target, "focus");
     }
   };
 
-  const handleKeyDown = (e) => {
-    // Handle keyboard feedback for interactive elements
-    if (
-      (e.key === "Enter" || e.key === " ") &&
-      isInteractiveElement(e.target)
-    ) {
-      provideFeedback(e.target, "keyboard");
-    }
+  // Toggle feedback function for keyboard shortcut
+  const toggleFeedback = () => {
+    setIsEnabled(prev => !prev);
+  };
 
-    // Handle text-to-speech for all keyboard input
-    if (voiceEnabled && isEnabled) {
-      // Skip modifier keys when pressed alone
-      if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) {
-        return;
-      }
+  // Trigger test feedback function for keyboard shortcut
+  const triggerFeedback = () => {
+    if (!isEnabled) return;
 
-      // Skip if it's a modifier combination
-      if (e.ctrlKey || e.altKey || e.metaKey) {
-        return;
-      }
+    // Create a temporary element for test feedback
+    const testElement = document.createElement('div');
+    testElement.style.position = 'fixed';
+    testElement.style.top = '50%';
+    testElement.style.left = '50%';
+    testElement.style.transform = 'translate(-50%, -50%)';
+    testElement.style.zIndex = '9999';
+    testElement.style.padding = '20px';
+    testElement.style.background = 'rgba(0, 0, 0, 0.8)';
+    testElement.style.color = 'white';
+    testElement.style.borderRadius = '8px';
+    testElement.textContent = 'Test Feedback';
+    document.body.appendChild(testElement);
 
-      const keyName = getKeyName(e.key);
-      speakText(keyName);
-    }
+    provideFeedback(testElement, "click");
+
+    setTimeout(() => {
+      document.body.removeChild(testElement);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -492,6 +582,19 @@ export const FeedbackProvider = ({ children, user }) => {
     document.addEventListener("focus", handleFocus, true);
     document.addEventListener("keydown", handleKeyDown, true);
 
+    // Listen for input events on all inputs and textareas
+    const addInputListeners = () => {
+      const inputElements = document.querySelectorAll("input, textarea");
+      inputElements.forEach((el) => {
+        el.addEventListener("input", handleInput, true);
+      });
+      return inputElements;
+    };
+
+    const inputElements = addInputListeners();
+
+    // If new inputs are added dynamically, you may want to re-run addInputListeners
+
     return () => {
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("mouseenter", handleMouseOver, true);
@@ -500,25 +603,15 @@ export const FeedbackProvider = ({ children, user }) => {
       document.removeEventListener("focus", handleFocus, true);
       document.removeEventListener("keydown", handleKeyDown, true);
 
-      if (touchTimerRef.current) {
-        clearTimeout(touchTimerRef.current);
-      }
+      inputElements.forEach((el) => {
+        el.removeEventListener("input", handleInput, true);
+      });
     };
-  }, [
-    isEnabled,
-    audioEnabled,
-    vibrationEnabled,
-    visualEnabled,
-    tapHoldDuration,
-    intensity,
-    voiceEnabled,
-    voiceSpeed,
-    user,
-  ]);
+  }, [isEnabled, tapHoldDuration]);
 
   const value = {
     isEnabled,
-    setIsEnabled,
+    setIsEnabled: toggleFeedback,
     audioEnabled,
     setAudioEnabled,
     vibrationEnabled,
@@ -533,6 +626,7 @@ export const FeedbackProvider = ({ children, user }) => {
     setVoiceEnabled,
     voiceSpeed,
     setVoiceSpeed,
+    triggerFeedback
   };
 
   return (

@@ -14,7 +14,7 @@ import { AlertCircle, Clock, RotateCcw, Save } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import AttemptQuizQuestionCard from './AttemptQuizQuestionCard';
 import { useGetCourseProgressQuery } from '@/features/api/courseProgressApi';
 import { useUpdateQuizProgressMutation } from "@/features/api/courseProgressApi";
@@ -28,20 +28,17 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    // Refs to prevent re-renders and manage intervals
     const lastSaveTimeRef = useRef(0);
     const saveTimeoutRef = useRef(null);
     const timerIntervalRef = useRef(null);
     const autoSaveIntervalRef = useRef(null);
     const retryCountRef = useRef(0);
 
-    // API hooks for attempt management
     const [startQuizAttempt] = useStartQuizAttemptMutation();
     const [updateQuizAttempt] = useUpdateQuizAttemptMutation();
     const [submitQuizAttempt, { isLoading }] = useSubmitQuizAttemptMutation();
     const [updateQuizProgress] = useUpdateQuizProgressMutation();
 
-    // Fetch user's attempts for this quiz
     const skipAttempts = !quizDetails?._id;
     const { data: userAttemptsData, refetch: refetchAttempts } =
       useGetUserAttemptsForQuizQuery(quizDetails?._id, { skip: skipAttempts });
@@ -51,12 +48,16 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
     const maxAttempts = userAttemptsData?.data?.maxAttempts ?? 0;
     const attemptsLeft = maxAttempts - attemptsUsed;
 
-    // Check for existing in-progress attempt
     const { data: inProgressAttempt, isLoading: inProgressLoading } = useGetInProgressAttemptQuery(quizDetails?._id, {
         skip: !quizDetails?._id
     });
 
-    const canResumeInProgress = !!inProgressAttempt && inProgressAttempt._id;
+    const actualAttempt = inProgressAttempt?.data;
+
+    const canResumeInProgress =
+  actualAttempt &&
+  actualAttempt.status === "in-progress" &&
+  actualAttempt._id;
     const attemptsExhausted = maxAttempts > 0 && attemptsLeft <= 0 && !canResumeInProgress;
 
     const skipProgress = !courseId;
@@ -112,14 +113,14 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
 
     // Initialize quiz state based on existing attempt
     useEffect(() => {
-        if (inProgressAttempt && inProgressAttempt._id && currentAttemptId !== inProgressAttempt._id) {
-            setCurrentAttemptId(inProgressAttempt._id);
-            setUserAnswers(inProgressAttempt.answers || []);
-            setRemainingTime(inProgressAttempt.remainingTime || (quizDetails?.quizTimer * 60));
-        } else if (quizDetails?.quizTimer && !inProgressAttempt && !quizStarted) {
+        if (actualAttempt && actualAttempt._id && currentAttemptId !== actualAttempt._id) {
+            setCurrentAttemptId(actualAttempt._id);
+            setUserAnswers(actualAttempt.answers || []);
+            setRemainingTime(actualAttempt.remainingTime || (quizDetails?.quizTimer * 60));
+        } else if (quizDetails?.quizTimer && !actualAttempt && !quizStarted) {
             setRemainingTime(quizDetails.quizTimer * 60);
         }
-    }, [inProgressAttempt, quizDetails, quizStarted, currentAttemptId]);
+    }, [actualAttempt, quizDetails, quizStarted, currentAttemptId]);
 
     // Auto-save answers and time periodically
     useEffect(() => {
@@ -253,19 +254,19 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
     }, []);
 
     const startQuiz = async () => {
-        if (inProgressAttempt && inProgressAttempt._id) {
-            setCurrentAttemptId(inProgressAttempt._id);
-            setUserAnswers(inProgressAttempt.answers || []);
-            setRemainingTime(inProgressAttempt.remainingTime || (quizDetails?.quizTimer * 60));
+        if (actualAttempt && actualAttempt._id) {
+            setCurrentAttemptId(actualAttempt._id);
+            setUserAnswers(actualAttempt.answers || []);
+            setRemainingTime(actualAttempt.remainingTime || (quizDetails?.quizTimer * 60));
             setQuizStarted(true);
             toast.info("Resuming your previous quiz attempt");
             console.log(
                 "Clicked ATTEMPT: Resuming attempt",
                 {
-                    attemptId: inProgressAttempt._id,
-                    userId: inProgressAttempt.userId,
-                    quizId: inProgressAttempt.quizId,
-                    startTime: inProgressAttempt.startTime,
+                    attemptId: actualAttempt._id,
+                    userId: actualAttempt.userId,
+                    quizId: actualAttempt.quizId,
+                    startTime: actualAttempt.startTime,
                     timestamp: new Date().toISOString()
                 }
             );
@@ -342,7 +343,7 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
                         <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center text-gray-900 dark:text-white">
                             {quizDetails?.quizTitle}
                         </h2>
-                        {inProgressAttempt && (
+                        {canResumeInProgress && (
                             <div className="w-full max-w-md mb-6 p-4 bg-orange-100 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-500/30 rounded-lg">
                                 <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 mb-2">
                                     <RotateCcw className="h-4 w-4" />
@@ -351,9 +352,9 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
                                 <p className="text-sm text-orange-700 dark:text-orange-200">
                                     You have an unfinished attempt. Click "Continue Quiz" to resume where you left off.
                                 </p>
-                                {inProgressAttempt.answers && inProgressAttempt.answers.length > 0 && (
+                                {actualAttempt.answers && actualAttempt.answers.length > 0 && (
                                     <p className="text-xs text-orange-700 dark:text-orange-200 mt-1">
-                                        You've answered {inProgressAttempt.answers.length} questions so far.
+                                        You've answered {actualAttempt.answers.length} questions so far.
                                     </p>
                                 )}
                             </div>
@@ -388,20 +389,20 @@ const QuizQuestion = ({ quizDetails, quizQuestions, isExpired, deadline, courseI
                             onClick={startQuiz}
                             size="lg"
                             className={`w-full max-w-xs py-3 rounded-lg text-base font-semibold transition ${
-                                isExpired || (attemptsExhausted && !canResumeInProgress)
+                                isExpired || attemptsExhausted
                                     ? 'bg-red-600 text-white cursor-not-allowed hover:bg-red-700'
-                                    : inProgressAttempt
+                                    : canResumeInProgress
                                         ? 'bg-orange-600 text-white hover:bg-orange-700'
                                         : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
-                            disabled={isExpired || (attemptsExhausted && !canResumeInProgress)}
+                            disabled={isExpired || attemptsExhausted}
                         >
                             {isExpired
                                 ? "Course Expired"
+                                : canResumeInProgress
+                                    ? "Continue Quiz"
                                 : attemptsExhausted
                                     ? "No Attempts Left"
-                                    : inProgressAttempt 
-                                        ? "Continue Quiz"
                                         : "Start Quiz"}
                         </Button>
                     </div>

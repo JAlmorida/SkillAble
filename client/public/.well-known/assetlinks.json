@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.skillablelms.twa",
+      "sha256_cert_fingerprints": [
+        "FD:EF:C3:C3:02:46:76:21:9D:FF:5A:A1:96:6F:1F:16:53:B2:E2:7A:A9:C5:F3:A7:EF:01:F3:42:26:B7:81:67"
+      ]
+    }
+  }
+]

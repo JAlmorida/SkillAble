@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { useCreateLessonMutation, useGetLectureLessonsQuery } from '@/features/api/lessonApi';
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import Lesson from './Lesson';
 import Input from '@/components/ui/input';
 
@@ -55,7 +55,7 @@ const CreateLesson = () => {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => navigate(`/admin/course/${courseId}/lecture/${lectureId}`)}
+            onClick={() => navigate(`/author/course/${courseId}/lecture/${lectureId}`)}
           >
             Back to Lecture
           </Button>

@@ -4,6 +4,7 @@ import { CourseProgress } from "../models/courseProgress.js";
 import { Course } from "../models/course.model.js";
 import { Attempt } from "../models/attempt.model.js";
 import { Question } from "../models/question.model.js";
+import { sendApprovalEmail } from "../utils/email.js";
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -36,7 +37,7 @@ export const getUserProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, photoUrl: bodyPhotoUrl } = req.body;
+    const { name, photoUrl: bodyPhotoUrl, bio } = req.body;
     const profilePicture = req.file;
 
     const user = await User.findById(userId);
@@ -62,7 +63,12 @@ export const updateProfile = async (req, res) => {
       photoUrl = bodyPhotoUrl;
     }
 
+    // Add bio to updatedData
     const updatedData = { name, photoUrl };
+    if (typeof bio !== 'undefined') {
+      updatedData.bio = bio;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
       new: true,
     }).select("-password");
@@ -141,9 +147,13 @@ export const getAllUsers = async (req, res) => {
       })
     );
 
+    // Get pending users count
+    const pendingUsersCount = await User.countDocuments({ isApproved: false });
+
     res.status(200).json({
       success: true,
-      users: usersWithProgress
+      users: usersWithProgress,
+      pendingUsersCount
     });
   } catch (error) {
     console.error("getAllUsers error:", error);
@@ -302,8 +312,8 @@ export const changeUserRole = async (req, res) => {
   try {
     const { userId, newRole } = req.body;
 
-    // Only allow "admin" or "student"
-    if (!["admin", "student"].includes(newRole)) {
+    // Only allow "admin", "student", or "author"
+    if (!["admin", "student", "author"].includes(newRole)) {
       return res.status(400).json({ success: false, message: "Invalid role" });
     }
 
@@ -324,6 +334,15 @@ export const changeUserRole = async (req, res) => {
       }
     }
 
+    // If promoting to author, check author count
+    if (newRole === "author") {
+      const authorCount = await User.countDocuments({ role: "author" });
+      const user = await User.findById(userId);
+      if (user.role !== "author" && authorCount >= 50) {
+        return res.status(400).json({ success: false, message: "Maximum number of authors reached (50)" });
+      }
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { role: newRole },
@@ -335,5 +354,54 @@ export const changeUserRole = async (req, res) => {
     console.error("changeUserRole error:", error);
     res.status(500).json({ success: false, message: "Failed to change user role" });
   }
+};
+
+// Approve user (set isApproved: true) and send email
+export const approveUser = async (req, res) => {
+  try {
+  const { id } = req.params;
+    
+    // Find the user first to get their email
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update user to approved
+    const updatedUser = await User.findByIdAndUpdate(
+      id, 
+      { isApproved: true }, 
+      { new: true }
+    );
+
+    // Send approval email using the clean function
+    try {
+      await sendApprovalEmail(user.email, `${user.firstName} ${user.lastName}`);
+      console.log(`Approval email sent to ${user.email}`);
+    } catch (emailError) {
+      console.error("Failed to send approval email:", emailError);
+      // Don't fail the approval if email fails
+    }
+
+    res.json({ 
+      success: true, 
+      message: "User approved and notification email sent", 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error("approveUser error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to approve user" 
+    });
+  }
+};
+
+// Reject user (delete or set a flag)
+export const rejectUser = async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findByIdAndDelete(id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json({ success: true, message: "User rejected and deleted" });
 };
 

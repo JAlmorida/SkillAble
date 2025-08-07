@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const CHAT_API = "http://localhost:8080/api/v1/chat/";
+const CHAT_API = "/api/v1/chat/";
 
 export const chatApi = createApi({
   reducerPath: "chatApi",
@@ -8,7 +8,7 @@ export const chatApi = createApi({
     baseUrl: CHAT_API,
     credentials: "include",
   }),
-  tagTypes: ["UserCourseGroupChats"],
+  tagTypes: ["UserCourseGroupChats", "UserFriends", "FriendRequests"],
   endpoints: (builder) => ({
     StreamToken: builder.query({
       query: () => ({
@@ -21,6 +21,7 @@ export const chatApi = createApi({
         url: "friends",
         method: "GET",
       }),
+      providesTags: ["UserFriends"],
     }),
     RecommendedUsers: builder.query({
       query: () => ({
@@ -39,29 +40,40 @@ export const chatApi = createApi({
         url: `friend-request/${userId}`,
         method: "POST",
       }),
+      invalidatesTags: ["UserCourseGroupChats", "UserFriends", "FriendRequests"],
     }),
     FriendRequests: builder.query({
       query: () => ({
         url: "friend-requests",
         method: "GET",
       }),
+      providesTags: ["FriendRequests"],
     }),
     acceptFriendRequest: builder.mutation({
       query: (requestId) => ({
         url: `friend-request/${requestId}/accept`,
         method: "PUT",
       }),
+      invalidatesTags: ["UserCourseGroupChats", "UserFriends", "FriendRequests"],
     }),
     createCourseGroupChat: builder.mutation({
       query: ({ courseId, name }) => ({
         url: `course-group/${courseId}/create`, 
         method: "POST", 
         body: { name }, 
-      })
+      }),
+      invalidatesTags: ["UserCourseGroupChats"]
     }),
     joinCourseGroupChat: builder.mutation({
       query: (courseId) => ({
         url: `course-group/${courseId}/join`,
+        method: "POST",
+      }),
+      invalidatesTags: ["UserCourseGroupChats"],
+    }),
+    leaveCourseGroupChat: builder.mutation({
+      query: (channelId) => ({
+        url: `course-group/${channelId}/leave`,
         method: "POST",
       }),
       invalidatesTags: ["UserCourseGroupChats"],
@@ -72,6 +84,26 @@ export const chatApi = createApi({
         method: "GET",
       }),
       providesTags: ["UserCourseGroupChats"],
+    }),
+    checkGroupChatMembership: builder.query({
+      query: (courseId) => ({
+        url: `course-group/${courseId}/membership`,
+        method: "GET",
+      }),
+    }),
+    rejoinCourseGroupChat: builder.mutation({
+      query: (courseId) => ({
+        url: `course-group/${courseId}/rejoin`,
+        method: "POST",
+      }),
+      invalidatesTags: ["UserCourseGroupChats"],
+    }),
+    deleteAcceptedFriendRequest: builder.mutation({
+      query: (id) => ({
+        url: `friend-requests/accepted/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["UserFriends"],
     }),
   }),
 });
@@ -85,5 +117,9 @@ export const {
   useAcceptFriendRequestMutation,
   useCreateCourseGroupChatMutation,
   useJoinCourseGroupChatMutation,
+  useLeaveCourseGroupChatMutation,
   useGetUserCourseGroupChatsQuery,
+  useCheckGroupChatMembershipQuery,
+  useRejoinCourseGroupChatMutation,
+  useDeleteAcceptedFriendRequestMutation,
 } = chatApi;

@@ -12,23 +12,32 @@ const streamClient = StreamChat.getInstance(apiKey, apiSecret);
 
 export const upsertStreamUser = async (userData) => {
   try {
-    // Ensure consistent user_details structure
+    let name = userData.name;
+    if (!name || !name.trim()) {
+      if (userData.firstName && userData.lastName) {
+      name = `${userData.firstName} ${userData.lastName}`;
+      } else if (userData.firstName) {
+        name = userData.firstName;
+      } else if (userData.lastName) {
+        name = userData.lastName;
+      }
+    }
+    if (!name || !name.trim()) {
+      name = "Anonymous User";
+    }
     const streamUserData = {
       id: userData.id,
-      name: userData.name || 'Anonymous User',
+      name,
       user_details: {
         email: userData.email || 'noemail@example.com',
-        name: userData.name || 'Anonymous User',
+        name,
       }
     };
-    console.log('typeof user_details:', typeof streamUserData.user_details);
-    console.log('user_details:', streamUserData.user_details);
-
     await streamClient.upsertUsers([streamUserData]);
     return streamUserData;
   } catch (error) {
     console.error("Error upserting Stream user:", error);
-    throw error; // Re-throw to handle in calling functions
+    throw error;
   }
 };
 

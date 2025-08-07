@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const LESSON_API = "http://localhost:8080/api/v1/lessons";
+const LESSON_API = "/api/v1/lessons";
 
 export const lessonApi = createApi({
   reducerPath: "lessonApi",

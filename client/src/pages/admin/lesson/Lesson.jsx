@@ -10,7 +10,7 @@ const Lesson = ({ lesson, lectureId, courseId, index }) => {
             alert("Lecture information is missing!");
             return;
         }
-        navigate(`/admin/course/${courseId}/lecture/${lectureId}/lesson/${lesson._id}/edit`);
+        navigate(`/author/course/${courseId}/lecture/${lectureId}/lesson/${lesson._id}/edit`);
     }
     
     return (

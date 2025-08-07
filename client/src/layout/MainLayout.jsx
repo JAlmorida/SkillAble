@@ -1,17 +1,20 @@
 import Navbar from '@/components/navBarUI/NavBar'
 import React from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import FloatingHomeButton from "../components/controls/FloatingHomeButton.jsx";
 
 function MainLayout() {
   const location = useLocation();
-  // List of routes that should NOT have the padding (e.g., login, register)
-  const noPaddingRoutes = ["/login", "/register", "/onboarding"];
-  const needsPadding = !noPaddingRoutes.includes(location.pathname);
+  const noNavbarRoutes = ["/login", "/register"];
+  const hideNavbar =
+    noNavbarRoutes.includes(location.pathname) ||
+    location.pathname.startsWith("/reset-password");
 
   return (
     <div className="bg-background">
-      <Navbar />
-      <div className={needsPadding ? "pt-20" : ""}>
+      {!hideNavbar && <Navbar />}
+      <div className={!hideNavbar ? "pt-20" : ""}>
+        <FloatingHomeButton />
         <Outlet/>
       </div>
     </div>

@@ -19,6 +19,10 @@ export const ScreenReaderProvider = ({ children, user }) => {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
 
+  // Simple state for highlighting
+  const [currentText, setCurrentText] = useState('');
+  const [highlightedElement, setHighlightedElement] = useState(null);
+
   const { data: settings, isSuccess } = useGetSettingsQuery(undefined, { skip: !user });
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -77,6 +81,29 @@ export const ScreenReaderProvider = ({ children, user }) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isReading]);
+
+  // Keyboard shortcuts implementation in the context
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Ctrl/Cmd + Alt + V to toggle screen reader
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key === 'v') {
+        event.preventDefault();
+        toggleScreenReader();
+      }
+      
+      // Ctrl/Cmd + Alt + R to read current element
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key === 'r') {
+        event.preventDefault();
+        const activeElement = document.activeElement;
+        if (activeElement && activeElement.textContent && isEnabled) {
+          readText(activeElement.textContent, activeElement);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEnabled]);
 
   // Helper function to extract text from any element
   const extractTextFromElement = (element) => {
@@ -142,11 +169,19 @@ export const ScreenReaderProvider = ({ children, user }) => {
       // Force clear the speech queue
       speechSynthesis.cancel();
     }
+    
     setIsReading(false);
     setCurrentUtterance(null);
+    setCurrentText('');
+    
+    // Remove highlighting from current element
+    if (highlightedElement) {
+      highlightedElement.classList.remove('screen-reader-reading');
+      setHighlightedElement(null);
+    }
   };
 
-  const readText = (text) => {
+  const readText = (text, element = null) => {
     if (!speechSupported) {
       console.warn('Web Speech API not supported in this browser');
       return;
@@ -165,6 +200,13 @@ export const ScreenReaderProvider = ({ children, user }) => {
 
     // Clean up text (remove extra whitespace)
     const cleanText = text.replace(/\s+/g, ' ').trim();
+    setCurrentText(cleanText);
+
+    // Highlight the element being read
+    if (element) {
+      element.classList.add('screen-reader-reading');
+      setHighlightedElement(element);
+    }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = voiceSpeed;
@@ -178,6 +220,13 @@ export const ScreenReaderProvider = ({ children, user }) => {
     utterance.onend = () => {
       setIsReading(false);
       setCurrentUtterance(null);
+      setCurrentText('');
+      
+      // Remove highlighting
+      if (highlightedElement) {
+        highlightedElement.classList.remove('screen-reader-reading');
+        setHighlightedElement(null);
+      }
     };
 
     utterance.onerror = (event) => {
@@ -187,6 +236,13 @@ export const ScreenReaderProvider = ({ children, user }) => {
       }
       setIsReading(false);
       setCurrentUtterance(null);
+      setCurrentText('');
+      
+      // Remove highlighting
+      if (highlightedElement) {
+        highlightedElement.classList.remove('screen-reader-reading');
+        setHighlightedElement(null);
+      }
     };
 
     setCurrentUtterance(utterance);
@@ -225,7 +281,7 @@ export const ScreenReaderProvider = ({ children, user }) => {
           target.classList.remove('screen-reader-active');
         }, 200);
         
-        readText(text);
+        readText(text, target);
       }
     };
 
@@ -246,6 +302,13 @@ export const ScreenReaderProvider = ({ children, user }) => {
       // Immediately update state
       setIsReading(false);
       setCurrentUtterance(null);
+      setCurrentText('');
+      
+      // Remove highlighting
+      if (highlightedElement) {
+        highlightedElement.classList.remove('screen-reader-reading');
+        setHighlightedElement(null);
+      }
       
       // Add visual feedback to indicate stopping
       const target = event.target;
@@ -262,7 +325,7 @@ export const ScreenReaderProvider = ({ children, user }) => {
       document.removeEventListener('click', handleGlobalClick);
       document.removeEventListener('dblclick', handleGlobalDoubleClick);
     };
-  }, [isEnabled, isReading]);
+  }, [isEnabled, isReading, highlightedElement]);
 
   const value = {
     voiceSpeed,
@@ -274,7 +337,8 @@ export const ScreenReaderProvider = ({ children, user }) => {
     readText,
     stopReading,
     setIsReading,
-    setCurrentUtterance
+    setCurrentUtterance,
+    currentText
   };
 
   return (

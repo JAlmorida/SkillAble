@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import Filter from "../Course/Filter";
 import SearchResult from "./SearchResult";
-import { useSearchCoursesQuery } from "@/features/api/courseApi";
 import { useSearchParams, Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGetSearchCourseQuery } from "@/features/api/courseApi";
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
@@ -13,7 +13,7 @@ const SearchPage = () => {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortByLevel, setSortByLevel] = useState("");
 
-  const { data, isLoading } = useSearchCoursesQuery({
+  const { data, isLoading } = useGetSearchCourseQuery({
     searchQuery: query && query.trim() !== "" ? query : undefined,
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     sortByLevel: sortByLevel || undefined

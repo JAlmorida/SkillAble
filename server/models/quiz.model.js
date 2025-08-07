@@ -22,6 +22,10 @@ const quizSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course'
     },
+    lecture: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lecture'
+    },
     maxAttempts: {
         type: Number,
         default: 5,

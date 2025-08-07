@@ -1,7 +1,7 @@
 import { useCreateQuestionMutation } from '@/features/api/questionApi';
 import React, { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useParams } from "react-router-dom";
@@ -117,6 +117,8 @@ const CreateQuestionModal = ({ setQuestions, setCreateQuestionModalData }) => {
                 className="relative bg-background shadow-lg rounded-lg border p-6 w-full max-w-md mx-auto z-50 max-h-[90vh] overflow-y-auto"
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby="dialog-title"
+                aria-describedby="dialog-description"
             >
                 <button
                     className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
@@ -125,7 +127,8 @@ const CreateQuestionModal = ({ setQuestions, setCreateQuestionModalData }) => {
                 >
                     <X size={22} />
                 </button>
-                <h3 className="text-2xl mb-4 font-semibold">Create a Question</h3>
+                <h3 id="dialog-title" className="text-2xl mb-4 font-semibold">Create a Question</h3>
+                <p id="dialog-description" className="sr-only">Create a new question for this quiz</p>
                 <form onSubmit={handleSubmit(submitHandler)} className="space-y-5">
                     <div>
                         <Label htmlFor="questionText">Question</Label>
